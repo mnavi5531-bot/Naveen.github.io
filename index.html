@@ -15,7 +15,7 @@
 :root[data-theme="dark"]{--bg:#111821;--card:#1b2430;--ink:#eef1f4;--mute:#93a0b1;--line:#2b3746;--in:#2fc29c;--out:#f08a5d;--warn:#f0b35d}
 *{box-sizing:border-box}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:'Bricolage Grotesque',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;min-height:100vh}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Bricolage Grotesque',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;min-height:100vh;min-height:100dvh}
 main{max-width:480px;margin:0 auto;padding:20px 16px 40px}
 h1{font-size:15px;font-weight:700;margin:0;color:var(--mute)}
 .clock{font-size:56px;font-weight:800;letter-spacing:-2px;margin:6px 0 0;font-variant-numeric:tabular-nums}
@@ -125,6 +125,36 @@ main{max-width:480px;margin:0 auto;padding:12px 16px calc(96px + env(safe-area-i
 #map{position:relative;z-index:0;height:340px;border-radius:14px;border:1px solid var(--line);margin-bottom:14px}
 .res{text-align:left;margin-top:6px;font-size:14px;padding:10px}
 .tw{overflow-x:auto;margin-top:10px}.tw table{border-collapse:collapse;min-width:800px;font-size:12px;font-variant-numeric:tabular-nums}.tw th,.tw td{border:1px solid var(--line);padding:6px;text-align:left;white-space:nowrap}
+</style>
+
+<style id="mobile-size-fix">
+/* Phone layout: 320px–480px, including safe areas and small screens */
+@media (max-width:480px){
+ html,body{width:100%;max-width:100%;overflow-x:hidden}
+ body{font-size:15px;-webkit-text-size-adjust:100%}
+ .top{width:100%;max-width:none;padding:10px 12px;align-items:center}
+ .logo{font-size:18px;line-height:1.15}.top small{display:none}
+ main{width:100%;max-width:none;padding:12px 12px calc(82px + env(safe-area-inset-bottom,0px))}
+ .card{padding:14px 12px;margin-bottom:12px;border-radius:14px}
+ .ph{font-size:21px;margin:4px 0 10px}.clock{font-size:clamp(44px,15vw,58px);line-height:1.05}.elapsed{font-size:30px}
+ #punch{width:min(46vw,164px);height:min(46vw,164px);min-width:132px;min-height:132px;margin:16px auto 8px;font-size:19px;box-shadow:0 0 0 7px color-mix(in srgb,var(--in) 18%,transparent),0 8px 18px color-mix(in srgb,var(--in) 30%,transparent)}
+ #punch.out{box-shadow:0 0 0 7px color-mix(in srgb,var(--out) 18%,transparent),0 8px 18px color-mix(in srgb,var(--out) 30%,transparent)}
+ .hero{gap:12px;padding:14px}.hero .big{font-size:clamp(38px,13vw,48px)}
+ .tiles,.chips{gap:8px}.tile{padding:10px}.tile b{font-size:19px}.chip{padding:9px 10px;font-size:13px}.chip b{font-size:16px}
+ .cal{gap:3px}.cal .wd{font-size:10px}.cd{height:44px;border-radius:8px;font-size:13px}.cd b{font-size:13px}.cd small{font-size:8px;line-height:10px;min-height:10px}
+ .days{gap:3px}.days label{font-size:10px;padding:5px 0}.days input{width:13px;height:13px}
+ .mnav{gap:6px}.mnav b{font-size:15px}.mnav .ghost{padding:6px 13px;font-size:18px}
+ .row{gap:7px;flex-wrap:wrap}.row label{font-size:13px}.row input{min-width:0;flex:1}
+ .mk{gap:5px}.mk button{font-size:11px;padding:8px 4px}
+ .log{gap:2px 6px}.log span{font-size:12px}.dur{font-size:13px}
+ #map{height:260px}.dbox,.dlg{padding:12px}.dbox{max-height:calc(100dvh - 24px);overflow:auto}
+ .slip{font-size:9px;padding:7px;overflow-x:auto}.slip .band{padding:9px}.slip .band b{font-size:16px}.slip .emp td{padding:4px 2px}.slip .st th,.slip .st td{padding:4px 3px}
+ .bar{width:100%;max-width:none;padding:5px 4px calc(5px + env(safe-area-inset-bottom,0px))}.tab{min-width:58px;font-size:10px}.tab svg{width:21px;height:21px}
+ #msg{left:10px;right:10px;bottom:calc(68px + env(safe-area-inset-bottom,0px));font-size:13px}
+ #lg{padding:12px;padding-top:max(12px,env(safe-area-inset-top,0px));padding-bottom:max(12px,env(safe-area-inset-bottom,0px));align-items:flex-start}
+ #lg .box{max-width:100%;padding:18px 16px;margin:auto 0}#lg h1{font-size:22px}#lg input{font-size:16px;padding:11px 10px}#lg .pwview{min-width:58px;padding:11px 8px;font-size:12px}#lg .b{font-size:16px;min-height:46px}#lgout{right:8px;top:8px;padding:6px 10px;font-size:12px;width:auto}
+}
+@media (max-width:359px){.top small{display:none}main{padding-left:10px;padding-right:10px}.card{padding:12px 10px}.cd{height:40px}.cd small{display:none}#punch{width:132px;height:132px}.tiles,.chips{grid-template-columns:1fr}.hero .big{font-size:38px}}
 </style>
 </head>
 <body>
@@ -346,7 +376,7 @@ async function punch(){
       /* Remember the workplace as the current saved place so the next
          movement outside its radius can start the return trip. */
       if(S.wp){S.here=S.wp.name;S.hereLL={la,lo};startTravelFrom(S.wp.name,la,lo,now);}
-      S.open=null;S.outSince=null;if(!S.auto)stopAuto();say(`Checked out at ${tm(now)}. Travelling Check-In started.`)
+      S.open=null;S.outSince=null;if(!S.auto)stopAuto();say(`Checked out at ${tm(now)}.${S.trip?' Travelling Check-In started.':''}`)
     }
     save();render();
   }catch(e){say(e.message,true)}finally{$('punch').disabled=false}
@@ -398,7 +428,7 @@ function graceCheck(){
   S.logs.unshift({in:S.open.t,out:end,inLat:S.open.lat,inLng:S.open.lng,outLat:lp?lp.la:undefined,outLng:lp?lp.lo:undefined});
   const la=lp?lp.la:S.wp.lat,lo=lp?lp.lo:S.wp.lng;
   if(S.wp)startTravelFrom(S.wp.name,la,lo,end);
-  S.open=null;S.outSince=null;if(!S.auto)stopAuto();save();render();say(`Checked out at ${tm(end)}. Travelling Check-In started.`);
+  S.open=null;S.outSince=null;if(!S.auto)stopAuto();save();render();say(`Checked out at ${tm(end)}.${S.trip?' Travelling Check-In started.':''}`);
 }
 function onPos(p){
   const{latitude:la,longitude:lo,accuracy:ac}=p.coords;
@@ -427,7 +457,13 @@ $('auto').onchange=()=>{
 };
 document.addEventListener('visibilitychange',()=>{if((S.auto||S.open||S.trk)&&document.visibilityState==='visible')startAuto(1)});
 $('recheck').onclick=()=>getPos().then(()=>{showPerm(false);say('Location allowed.');if(S.auto)startAuto()}).catch(e=>say(e.message,true));
-$('auto').checked=!!S.auto;if(S.auto||S.open||S.trk)startAuto(1);
+$('auto').checked=!!S.auto;
+if(S.trk&&S.home&&!S.trip&&!S.here){
+  S.here=S.home.name;
+  S.hereLL={la:S.home.lat,lo:S.home.lng};
+  save();
+}
+if(S.auto||S.open||S.trk)startAuto(1);
 watchPerm();
 const H=3600000,RULE={min:1*H,half:4*H,full:6*H,shift:9*H};
 const WORK=['Absent','Half day','Full day','Shift completed'];
@@ -458,7 +494,7 @@ function renderRep(){
   const full=c('Full day')+c('Shift completed')+c('Marked present'),half=c('Half day');
   $('repSum').innerHTML=`<div class="hero"><div class="big">${full+half/2}</div><div>days attendance<br><small>Full ${full}, Half ${half}</small></div></div><div class="tiles"><div class="tile"><span>Time worked</span><b>${hm(tot)}</b></div><div class="tile ot"><span>Overtime</span><b>${hm(ot)}</b></div></div><div class="chips"><span class="chip" style="--c:#0f8a6d"><i></i>Present<b>${full}</b></span><span class="chip" style="--c:#d99a06"><i></i>Half day<b>${half}</b></span><span class="chip" style="--c:#dc2626"><i></i>Absent<b>${c('Absent')+c('Marked absent')}</b></span><span class="chip" style="--c:#3b6fd4"><i></i>Week off<b>${c('Week off')}</b></span><span class="chip" style="--c:#7c3aed"><i></i>Holiday<b>${c('Holiday')}</b></span><span class="chip" style="--c:#ea580c"><i></i>Leave<b>${c('Leave')}</b></span><span class="chip" style="--c:var(--mute)"><i></i>No check-in<b>${c('No check-in')}</b></span></div>`;
   $('rep').innerHTML=r.map(x=>{
-    if(WORK.includes(x.st))return `<div class="log" style="--s:${sc(x.st)}"><b>${dy(x.d)}</b><span class="dur">${hm(x.ms)}</span><span>${loc}${x.lat!==undefined?` (${f5(x.lat)}, ${f5(x.lng)})`:''}<br>In ${tm(x.a)}, Out ${x.live?'still checked in':tm(x.b)}<br><b style="color:var(--s)">${x.st}${x.live?' so far':''}</b>${x.ot?`, Overtime ${hm(x.ot)}`:''}${x.hol?', Holiday work (double pay)':''}</span><div class="mk"><button data-k="${x.k}" data-v="holiday" class="${x.hol?'on':''}">Holiday</button></div></div>`;
+    if(WORK.includes(x.st))return `<div class="log" style="--s:${sc(x.st)}"><b>${dy(x.d)}</b><span class="dur">${hm(x.ms)}</span><span>${esc(loc)}${x.lat!==undefined?` (${f5(x.lat)}, ${f5(x.lng)})`:''}<br>In ${tm(x.a)}, Out ${x.live?'still checked in':tm(x.b)}<br><b style="color:var(--s)">${x.st}${x.live?' so far':''}</b>${x.ot?`, Overtime ${hm(x.ot)}`:''}${x.hol?', Holiday work (double pay)':''}</span><div class="mk"><button data-k="${x.k}" data-v="holiday" class="${x.hol?'on':''}">Holiday</button></div></div>`;
     const btn=(v,t)=>`<button data-k="${x.k}" data-v="${v}" class="${x.st===t||x.st==='Marked '+t.toLowerCase()?'on':''}">${t}</button>`;
     const note=x.st==='No check-in'?(x.short!==undefined?`Only ${hm(x.short)} at workplace, not counted`:'No check-in'):x.st==='Not joined'?'Before joining date':x.st==='Week off'&&!S.marks[x.k]?'Weekly off':'Marked by you';
     return `<div class="log" style="--s:${sc(x.st)}"><b>${dy(x.d)}</b><span class="dur" style="color:var(--s)">${x.short!==undefined?hm(x.short):x.st==='No check-in'?'':x.st}</span><span>${note}${x.a!==undefined?`<br>In ${tm(x.a)}, Out ${x.live?'still checked in':tm(x.b)}`:''}</span>${x.st==='Not joined'?'':`<div class="mk">${btn('present','Present')}${btn('weekoff','Week off')}${btn('holiday','Holiday')}${btn('leave','Leave')}${btn('absent','Absent')}</div>`}</div>`;
@@ -477,7 +513,7 @@ function repText(){
   return lines.join('\n');
 }
 $('mon').onchange=renderRep;
-$('wpName').onchange=()=>{if(S.wp){const n=$('wpName').value.trim()||'Workplace',l=S.locs.find(x=>x.name===S.wp.name);if(S.locs.some(x=>x!==l&&x.name.toLowerCase()===n.toLowerCase())){say('That name is already used.',true);render();return}if(l)l.name=n;S.wp.name=n;save();render()}};
+$('wpName').onchange=()=>{if(S.wp){const n=$('wpName').value.trim()||'Workplace',l=S.locs.find(x=>x.name===S.wp.name);if(S.locs.some(x=>x!==l&&x.name.toLowerCase()===n.toLowerCase())){say('That name is already used.',true);render();return}const old=S.wp.name;if(S.here===old)S.here=n;if(l)l.name=n;S.wp.name=n;save();render()}};
 $('rep').onclick=e=>{const b=e.target.closest('button[data-k]');if(!b)return;
   const k=b.dataset.k,v=b.dataset.v;if(S.marks[k]===v)delete S.marks[k];else S.marks[k]=v;save();renderRep()};
 $('csv').onclick=()=>{
@@ -504,7 +540,7 @@ $('wo').innerHTML=['Su','Mo','Tu','We','Th','Fr','Sa'].map((n,i)=>`<label><input
 $('wo').onchange=e=>{const s=new Set(S.wo||[]),d=+e.target.dataset.d;if(e.target.checked)s.add(d);else s.delete(d);S.wo=[...s];save();render()};
 const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function cycOpts(){const n=new Date(),o=[];let y=n.getFullYear(),m=n.getMonth()-(n.getDate()<21?1:0);if(m<0){m=11;y--}
-  for(let i=0;i<4;i++){const e=new Date(y,m+1,20);o.push([`${y}-${pad(m+1)}`,`21 ${MN[m]} to 20 ${MN[e.getMonth()]} ${e.getFullYear()}`]);m--;if(m<0){m=11;y--}}return o}
+  for(let i=0;i<3;i++){const e=new Date(y,m+1,20);o.push([`${y}-${pad(m+1)}`,`21 ${MN[m]} to 20 ${MN[e.getMonth()]} ${e.getFullYear()}`]);m--;if(m<0){m=11;y--}}return o}
 const PD={month:'',basicAmt:0,hraAmt:0,splAmt:0,basis:'cal',ot:1.5,hpd:9,vpf:0,pt:0,oth:0,leavePaid:1,holPaid:1,holDbl:1,pf:0,pfEr:0,esi:0};
 const PF=[['month','Pay cycle','select',cycOpts()],['basicAmt','Basic per month (₹)','number'],['hraAmt','HRA per month (₹)','number'],['splAmt','Special allowance per month (₹)','number'],['basis','Days basis','select',[['cal','Calendar days in month'],['work','Working days (no week offs)'],['26','Fixed 26 days'],['30','Fixed 30 days']]],['ot','Overtime pay','select',[[0,'Off'],[1,'1x'],[1.5,'1.5x'],[2,'2x']]],['hpd','Hours in a day','number'],['pf','PF employee (₹)','number'],['pfEr','PF employer (₹)','number'],['vpf','VPF (₹)','number'],['esi','ESI (₹)','number'],['pt','Professional tax (₹)','number'],['oth','Other deduction (₹)','number']];
 const PT=[['leavePaid','Leave is paid'],['holPaid','Holidays are paid'],['holDbl','Double pay if worked on a holiday']];
@@ -515,7 +551,7 @@ function buildPay(){const p=P();
 }
 $('payForm').oninput=$('payForm').onchange=e=>{const el=e.target,k=el.dataset.k;if(!k)return;S.pay=Object.assign({},S.pay,{v2:1});S.pay[k]=el.type==='checkbox'?+el.checked:el.type==='number'?(+el.value||0):el.value;save();renderPay()};
 function calcPay(){
-  const p=P(),[y,m]=p.month.split('-').map(Number),dim=Math.round((new Date(y,m,21)-new Date(y,m-1,21))/864e5),t0=new Date();t0.setHours(0,0,0,0);
+  const p=P();p.ot=+p.ot||0;const[y,m]=p.month.split('-').map(Number),dim=Math.round((new Date(y,m,21)-new Date(y,m-1,21))/864e5),t0=new Date();t0.setHours(0,0,0,0);
   const all=dayRows(Array.from({length:dim},(_,i)=>new Date(y,m-1,21+i))),r=all.filter(x=>x.d<=t0),c=s=>r.filter(x=>x.st===s).length;
   const full=c('Full day')+c('Shift completed')+c('Marked present'),nj=c('Not joined'),half=c('Half day'),wo=c('Week off'),hol=c('Holiday'),lv=c('Leave'),ab=r.length-full-half-wo-hol-lv-nj;
   const base=p.basis==='cal'?dim:p.basis==='work'?dim-all.filter(x=>x.st==='Week off').length:+p.basis;
@@ -648,7 +684,21 @@ function useAs(role,l){
   const o=role==='wp'?S.home:S.wp;
   if(o&&o.name===l.name){say('Home and workplace must be different places.',true);return}
   const c={name:l.name,lat:l.lat,lng:l.lng};
-  if(role==='wp'){S.wp=c;S.radius=+$('rad').value||150}else{S.home=c;if(!S.trk){S.trk=true;startAuto(1)}}
+  if(role==='wp'){
+    S.wp=c;
+    S.radius=+$('rad').value||150;
+  }else{
+    S.home=c;
+    if(!S.trk){
+      S.trk=true;
+      S.here=l.name;
+      S.hereLL={la:l.lat,lo:l.lng};
+      startAuto(1);
+    }else{
+      S.here=l.name;
+      S.hereLL={la:l.lat,lo:l.lng};
+    }
+  }
   save();render();say(`${role==='wp'?'Workplace':'Home'} set to ${l.name}.`+(role==='home'?' Trip logging is on.':''));
 }
 /* trips */
@@ -669,31 +719,74 @@ function startTravelFrom(name,la,lo,now){
 function arriveAt(name,la,lo,now){if(!S.trk)return;endTrip(name,la,lo,now);S.here=name;S.hereLL={la,lo};save();renderTrip()}
 function tripPos(la,lo,now){
   if(!S.trk||!S.locs.length)return;
-  const at=near(la,lo,S.radius);let ch=false;
+  let ch=false;
 
-  /* Reaching a saved place stops the active Travelling Check-In. */
-  if(at){
-    if(S.trip){endTrip(at.name,la,lo,now);ch=true}
-    if(S.here!==at.name){S.here=at.name;ch=true}
-    S.hereLL={la,lo};
-
-    /* Reaching workplace ends travel and starts regular work attendance. */
-    if(S.auto && S.wp && at.name===S.wp.name && !S.open){
-      S.open={t:now,lat:la,lng:lo};
-      save();render();say(`Travelling Check-In stopped. Auto checked in at ${tm(now)}.`);
-    }
-  }else if(S.here&&!S.trip){
-    const h=S.locs.find(l=>l.name===S.here);
-    if(!h){S.here=null;ch=true}
-    else {
-      const threshold=(S.home&&h.name===S.home.name)?(S.homeDeparture||500):S.radius+30;
-      if(dist(la,lo,h.lat,h.lng)>threshold){
-        const q=S.hereLL||{la:h.lat,lo:h.lng};
-        startTravelFrom(h.name,q.la,q.lo,now);
-        S.here=null;ch=true;say(`Travelling Check-In started after leaving ${h.name}.`);
+  /*
+   * Home departure rule:
+   * Do NOT start the morning Travelling Check-In while still at/near Home.
+   * It starts only after crossing 500 m from the saved Home location.
+   */
+  if(!S.trip && S.here){
+    const here=S.locs.find(l=>l.name===S.here);
+    if(!here){
+      S.here=null;ch=true;
+    }else{
+      const threshold=(S.home&&here.name===S.home.name)
+        ?(Number(S.homeDeparture)||500)
+        :(Number(S.radius)||150)+30;
+      if(dist(la,lo,here.lat,here.lng)>threshold){
+        startTravelFrom(here.name,here.lat,here.lng,now);
+        if(S.trip)S.trip.left=true;
+        S.here=null;ch=true;
+        say(`Travelling Check-In started after leaving ${here.name} by ${Math.round(threshold)} m.`);
       }
     }
   }
+
+  /*
+   * Destination arrival rule:
+   * Use the destination's own arrival radius. Home uses 500 m only for
+   * departure; Workplace uses the configured workplace radius for arrival.
+   */
+  if(S.trip&&!S.trip.left){const f=S.locs.find(l=>l.name===S.trip.from);
+    if(!f)S.trip.left=true;
+    else if(dist(la,lo,f.lat,f.lng)>((S.home&&f.name===S.home.name)?(Number(S.homeDeparture)||500):(Number(S.radius)||150)+30)){S.trip.left=true;ch=true}}
+  const destinations=[];
+  if(S.home)destinations.push({place:S.home,radius:500});
+  if(S.wp)destinations.push({place:S.wp,radius:Number(S.radius)||150});
+
+  let at=null;
+  for(const d of destinations){
+    if(dist(la,lo,d.place.lat,d.place.lng)<=d.radius){
+      at=d.place;
+      break;
+    }
+  }
+
+  if(at){
+    if(S.trip&&!S.trip.left&&at.name===S.trip.from){if(ch){save();renderTrip()}return}
+    if(S.trip){
+      endTrip(at.name,la,lo,now);
+      ch=true;
+    }
+    if(S.here!==at.name){
+      S.here=at.name;ch=true;
+    }
+    S.hereLL={la,lo};
+
+    /*
+     * Morning sequence:
+     * Home -> 500 m departure -> travelling -> Workplace arrival ->
+     * stop travelling -> start regular Work Check-In.
+     */
+    if(S.auto && S.wp && at.name===S.wp.name && !S.open){
+      S.open={t:now,lat:la,lng:lo};
+      save();render();
+      say(`Travelling Check-In stopped. Auto checked in at ${tm(now)}.`);
+      return;
+    }
+  }
+
   if(ch){save();renderTrip();renderLib()}
 }
 function tripTick(){$('tripE').textContent=S.trip?hms(Date.now()-S.trip.t):''}
@@ -723,7 +816,23 @@ $('places').onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const 
 $('saveHere').onclick=()=>pickHere(null);
 $('saveHomeHere').onclick=()=>pickHere(null);
 $('setHome').onclick=()=>pickHere('home');
-$('trk').onchange=()=>{S.trk=$('trk').checked;if(S.trk)startAuto(1);else{S.here=null;S.trip=null;if(!S.auto&&!S.open)stopAuto(1)}save();render()};
+$('trk').onchange=()=>{
+  S.trk=$('trk').checked;
+  if(S.trk){
+    if(!S.home||!S.wp){
+      S.trk=false;$('trk').checked=false;
+      say('Set both Home and Workplace first.',true);
+    }else{
+      S.here=S.home.name;
+      S.hereLL={la:S.home.lat,lo:S.home.lng};
+      startAuto(1);
+    }
+  }else{
+    S.here=null;S.trip=null;
+    if(!S.auto&&!S.open)stopAuto(1);
+  }
+  save();render()
+};
 $('tripX').onclick=()=>{S.trip=null;save();renderTrip()};
 $('tclr').onclick=()=>{if(confirm('Delete the whole trip log?')){S.trips=[];save();render()}};
 $('tcsv').onclick=()=>{const q=v=>`"${String(v).replace(/"/g,'""')}"`;
@@ -749,7 +858,7 @@ function openMaps(){
   fillFrom();
   if(!M.map&&window.L){
     M.map=L.map('map').setView([20.6,78.9],5);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(M.map);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:19,attribution:'&copy; OpenStreetMap contributors &copy; CARTO'}).addTo(M.map);
     M.g=L.layerGroup().addTo(M.map);
     M.map.on('click',e=>{M.to={name:'Dropped pin',lat:e.latlng.lat,lng:e.latlng.lng};go()});
   }
@@ -799,6 +908,8 @@ prune();render();setInterval(tick,1000);
 </script>
 <script>
 (()=>{const $=i=>document.getElementById(i),B=document.body,MAIL='mnavi5531@gmail.com',ID='10044289';
+/* ===== EMAIL SETUP (EmailJS) — paste your 3 values here ===== */
+const EJ={service:'Naveen@1243',template:'template_ts1f3mq',key:'GYdp2calx6qNHSZq0'};
 let code='',exp=0;
 const get=()=>{try{return localStorage.getItem('att_pw')||'Onepiece@1243'}catch(e){return 'Onepiece@1243'}};
 const set=v=>{try{localStorage.setItem('att_pw',v)}catch(e){}};
@@ -811,14 +922,14 @@ if(!a)B.classList.add('locked');
 B.insertAdjacentHTML('afterbegin',`<div id="lg"><div class="box">
 <h1>Attendance Management</h1><p class="s" id="lgs">Sign in to continue</p>
 <div id="v1"><label>Login Name</label><input id="u" autocomplete="username" inputmode="numeric">
-<label>Password</label><input id="p" type="password" autocomplete="current-password">
+<label>Password</label><div class="pwrow"><input id="p" type="password" autocomplete="current-password"><button type="button" class="pwview" id="vp" aria-label="Show password">Show</button></div>
 <div class="er" id="e1"></div><button class="b" id="li">Login</button><button class="lk" id="fg">Forgot password?</button></div>
 <div id="v2" hidden><label>Registered Mail ID</label><input id="em" type="email" placeholder="you@gmail.com">
 <div class="er" id="e2"></div><button class="b" id="sc">Send reset code</button><button class="lk" data-b>Back to login</button></div>
 <div id="v3" hidden><div class="mail" id="ml"></div><label>Reset code</label><input id="cd" inputmode="numeric" maxlength="6">
 <div class="er" id="e3"></div><button class="b" id="vc">Verify code</button><button class="lk" data-b>Back to login</button></div>
-<div id="v4" hidden><label>New password</label><input id="n1" type="password" autocomplete="new-password">
-<label>Confirm new password</label><input id="n2" type="password" autocomplete="new-password">
+<div id="v4" hidden><label>New password</label><div class="pwrow"><input id="n1" type="password" autocomplete="new-password"><button type="button" class="pwview" id="vn1" aria-label="Show new password">Show</button></div>
+<label>Confirm new password</label><div class="pwrow"><input id="n2" type="password" autocomplete="new-password"><button type="button" class="pwview" id="vn2" aria-label="Show confirm password">Show</button></div>
 <div class="er" id="e4"></div><button class="b" id="rp">Reset password</button></div>
 </div></div>
 `);
@@ -831,6 +942,9 @@ body.locked #lg{display:flex}
 #lg p.s{color:var(--mute);text-align:center;margin:0 0 18px;font-size:14px}
 #lg label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}
 #lg input{font:inherit;width:100%;padding:12px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink)}
+#lg .pwrow{display:flex;gap:8px;align-items:center}
+#lg .pwrow input{flex:1;min-width:0}
+#lg .pwview{width:auto;margin:0;padding:10px 12px;background:var(--bg);color:var(--in);border:1px solid var(--line);font-size:13px}
 #lg .b{background:var(--in);margin-top:16px}
 #lg .lk{background:none;color:var(--in);font-size:14px;padding:8px;margin-top:8px}
 #lg .er{color:var(--out);font-size:13px;min-height:18px;margin-top:8px}
@@ -842,18 +956,27 @@ body.locked #lg{display:flex}
 const hd=document.querySelector('header.top');hd.style.position='relative';
 hd.insertAdjacentHTML('beforeend','<button id="lgout">Logout</button>');
 $('lgout').onclick=()=>{try{sessionStorage.removeItem('att_in')}catch(e){}$('u').value=$('p').value='';show(1);B.classList.add('locked')};
+const togglePassword=(inputId,buttonId,label)=>{$(buttonId).onclick=()=>{const visible=$(inputId).type==='text';$(inputId).type=visible?'password':'text';$(buttonId).textContent=visible?'Show':'Hide';$(buttonId).setAttribute('aria-label',visible?'Show '+label:'Hide '+label)}};
+togglePassword('p','vp','password');togglePassword('n1','vn1','new password');togglePassword('n2','vn2','confirm password');
 $('li').onclick=()=>{if($('u').value.trim()===ID&&$('p').value===get())unlock();else err('e1','Wrong login name or password.')};
 ['u','p'].forEach(i=>$(i).onkeydown=e=>{if(e.key==='Enter')$('li').click()});
 $('fg').onclick=()=>show(2);
 document.querySelectorAll('[data-b]').forEach(b=>b.onclick=()=>show(1));
-$('sc').onclick=()=>{if($('em').value.trim().toLowerCase()!==MAIL)return err('e2','This mail ID is not registered.');
+$('sc').onclick=async()=>{if($('em').value.trim().toLowerCase()!==MAIL)return err('e2','This mail ID is not registered.');
 code=String(Math.floor(100000+Math.random()*900000));exp=Date.now()+600000;
-$('ml').innerHTML='To: '+MAIL+'<br>Your password reset code (valid 10 min):<b>'+code+'</b>';show(3)};
+if(!EJ.service||!EJ.template||!EJ.key){$('ml').innerHTML='Email service not set up yet (demo mode).<br>Code:<b>'+code+'</b>';show(3);return}
+const bt=$('sc');bt.disabled=true;err('e2','Sending code to your mail…',1);
+try{const r=await fetch('https://api.emailjs.com/api/v1.0/email/send',{method:'POST',headers:{'Content-Type':'application/json'},
+body:JSON.stringify({service_id:EJ.service,template_id:EJ.template,user_id:EJ.key,template_params:{to_email:MAIL,otp:code,app_name:'Attendance Management',valid_minutes:'10'}})});
+if(!r.ok)throw new Error(await r.text());
+$('ml').innerHTML='A 6-digit code was sent to <b style="display:inline;font-size:inherit;letter-spacing:0">'+MAIL.replace(/^(.).*(@.*)$/,'$1***$2')+'</b>. Check your inbox (and spam). Valid 10 minutes.';show(3)}
+catch(x){code='';let m=String(x&&x.message||x).slice(0,160);if(/failed to fetch|networkerror|load failed/i.test(m))m='No internet connection, or the request was blocked. Open the page over https and check your connection.';err('e2','Could not send the mail: '+m)}
+bt.disabled=false};
 $('vc').onclick=()=>{if(Date.now()>exp)return err('e3','Code expired. Please request a new one.');
 if($('cd').value.trim()!==code)return err('e3','Incorrect code.');show(4)};
 $('rp').onclick=()=>{const a=$('n1').value;if(a.length<6)return err('e4','Use at least 6 characters.');
 if(a!==$('n2').value)return err('e4','Passwords do not match.');set(a);code='';err('e4','Password changed. Taking you to login…',1);
-setTimeout(()=>{$('p').value='';show(1);err('e1','Password updated. Login with your new password.',1)},1200)};
+setTimeout(()=>{$('u').value=ID;$('p').value='';$('p').type='password';$('vp').textContent='Show';show(1);err('e1','Password updated. Your login name is filled in. Enter your new password.',1);$('p').focus()},1200)};
 })();
 </script>
 </body>
