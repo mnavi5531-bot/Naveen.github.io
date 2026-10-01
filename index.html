@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f8a6d">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Punch">
+<meta name="color-scheme" content="light dark">
+<title>Punch – Location Attendance</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+:root{--bg:#eef1f4;--card:#fff;--ink:#1b2430;--mute:#6a7686;--line:#d9dfe6;--in:#0f8a6d;--out:#c2410c;--warn:#b45309;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111821;--card:#1b2430;--ink:#eef1f4;--mute:#93a0b1;--line:#2b3746;--in:#2fc29c;--out:#f08a5d;--warn:#f0b35d}}
+:root[data-theme="dark"]{--bg:#111821;--card:#1b2430;--ink:#eef1f4;--mute:#93a0b1;--line:#2b3746;--in:#2fc29c;--out:#f08a5d;--warn:#f0b35d}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Bricolage Grotesque',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;min-height:100vh;min-height:100dvh}
+main{max-width:480px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:15px;font-weight:700;margin:0;color:var(--mute)}
+.clock{font-size:56px;font-weight:800;letter-spacing:-2px;margin:6px 0 0;font-variant-numeric:tabular-nums}
+.date{color:var(--mute);margin:0 0 18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
+.status{display:flex;align-items:center;gap:10px;font-weight:700}
+.dot{width:12px;height:12px;border-radius:50%;background:var(--mute)}
+.on .dot{background:var(--in);box-shadow:0 0 0 5px color-mix(in srgb,var(--in) 25%,transparent)}
+.elapsed{font-size:34px;font-weight:800;margin:8px 0 0;font-variant-numeric:tabular-nums}
+.sub{color:var(--mute);font-size:14px;margin:4px 0 0}
+button{font:inherit;font-weight:700;border:0;border-radius:14px;padding:16px;width:100%;font-size:18px;cursor:pointer;color:#fff}
+button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+button:disabled{opacity:.5}
+#punch{background:var(--in);min-height:64px}
+#punch.out{background:var(--out)}
+.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line);font-size:15px;padding:12px}
+.row{display:flex;gap:10px;align-items:center;margin-top:10px}
+.row label{font-size:14px;color:var(--mute);white-space:nowrap}
+input[type=number]{font:inherit;width:100%;padding:10px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink)}
+#perm{display:none;border:1.5px solid var(--warn);border-radius:14px;padding:14px;margin-bottom:14px;font-size:14px;background:var(--card)}
+#perm.show{display:block}
+h2{font-size:16px;margin:0 0 8px}
+.log{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:10px 0;border-top:1px solid var(--line)}
+.log:first-of-type{border-top:0}
+.log b{font-weight:700}.log span{color:var(--mute);font-size:13px}
+.dur{font-weight:800;align-self:center;grid-row:1/3;grid-column:2}
+.empty{color:var(--mute);font-size:14px}
+.mk{display:flex;gap:8px;margin-top:6px;grid-column:1/3}
+.mk button{font-size:13px;padding:8px;width:auto;flex:1;border:1.5px solid var(--line);background:transparent;color:var(--ink);border-radius:10px}
+.mk button.on{background:var(--ink);color:var(--bg)}
+#repSum{line-height:1.6}
+
+[hidden]{display:none!important}
+main{max-width:480px;margin:0 auto;padding:12px 16px calc(96px + env(safe-area-inset-bottom,0px))}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:4;background:var(--bg);display:flex;justify-content:space-between;align-items:baseline;padding:14px 16px;border-bottom:1px solid var(--line);max-width:480px;margin:0 auto}
+.logo{font-size:22px;font-weight:800;letter-spacing:-.5px}
+.top small{color:var(--mute);font-size:13px}
+.ph{font-size:24px;font-weight:800;margin:6px 0 14px;letter-spacing:-.5px}
+.clock{font-size:64px;text-align:center;margin:8px 0 0}
+.date{text-align:center}
+#statusCard{text-align:center}
+#statusCard .status{justify-content:center}
+#punch{display:block;width:176px;height:176px;border-radius:50%;margin:20px auto 8px;font-size:22px;padding:0;box-shadow:0 0 0 10px color-mix(in srgb,var(--in) 18%,transparent),0 10px 24px color-mix(in srgb,var(--in) 35%,transparent)}
+#punch.out{box-shadow:0 0 0 10px color-mix(in srgb,var(--out) 18%,transparent),0 10px 24px color-mix(in srgb,var(--out) 35%,transparent)}
+#msg{position:fixed;left:12px;right:12px;bottom:calc(78px + env(safe-area-inset-bottom,0px));max-width:456px;margin:0 auto;background:var(--ink);color:var(--bg);padding:12px 14px;border-radius:12px;font-size:14px;font-weight:600;z-index:7;opacity:0;pointer-events:none;transition:opacity .2s}
+#msg.show{opacity:1}
+#msg.err{background:var(--warn);color:#fff}
+.bar{position:fixed;left:0;right:0;bottom:0;z-index:6;max-width:480px;margin:0 auto;display:flex;background:var(--card);border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px))}
+.tab{flex:1;width:auto;background:transparent;color:var(--mute);border-radius:12px;padding:6px 0;font-size:11px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:3px}
+.tab svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tab[aria-current="page"]{color:var(--in);background:color-mix(in srgb,var(--in) 12%,transparent)}
+@media (prefers-reduced-motion:reduce){#msg{transition:none}}
+#repSum{margin:14px 0 12px}
+.hero{display:flex;align-items:center;gap:16px;background:var(--ink);color:var(--bg);border-radius:16px;padding:16px 18px}
+.hero .big{font-size:54px;font-weight:800;line-height:1;letter-spacing:-2px;font-variant-numeric:tabular-nums}
+.hero small{opacity:.75;font-size:13px}
+.tiles,.chips{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.tile{border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:var(--bg)}
+.tile span{display:block;color:var(--mute);font-size:13px;margin-bottom:2px}
+.tile b{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+.tile.ot b{color:var(--out)}
+.chip{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:14px;font-weight:600;background:var(--bg)}
+.chip i{width:10px;height:10px;border-radius:50%;background:var(--c);flex:none}
+.chip b{margin-left:auto;font-size:18px;font-weight:800}
+.in2{font:inherit;width:100%;padding:10px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink)}
+.kv{display:flex;justify-content:space-between;padding:7px 0;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+.kv.h{font-weight:800;border-top:0;padding-top:14px}.kv.tot{font-weight:800;font-size:19px}
+#grace{display:none;border:1.5px solid var(--warn);border-radius:14px;padding:12px;margin-bottom:14px;font-size:14px;text-align:center}
+#grace.show{display:block}
+.days{display:flex;gap:6px;margin-top:8px}.days label{flex:1;text-align:center;font-size:12px;border:1.5px solid var(--line);border-radius:8px;padding:6px 0}.days input{display:block;margin:0 auto 2px}
+.log[style*="--s"]{border-left:5px solid var(--s);padding-left:10px}
+.mk button[data-v=present].on{background:#0f8a6d;color:#fff;border-color:#0f8a6d}.mk button[data-v=weekoff].on{background:#3b6fd4;color:#fff;border-color:#3b6fd4}.mk button[data-v=holiday].on{background:#7c3aed;color:#fff;border-color:#7c3aed}.mk button[data-v=leave].on{background:#ea580c;color:#fff;border-color:#ea580c}.mk button[data-v=absent].on{background:#dc2626;color:#fff;border-color:#dc2626}
+.mnav{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.mnav b{font-size:17px}
+.mnav .ghost{width:auto;padding:6px 18px;font-size:20px;line-height:1}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:12px}
+.cal .wd{text-align:center;font-size:12px;color:var(--mute);font-weight:700}
+.cd{--s:var(--mute);padding:0;height:52px;width:auto;font-size:15px;color:var(--ink);border:2px solid transparent;border-radius:10px;background:color-mix(in srgb,var(--s) 16%,var(--card));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+.cd b{font-size:15px;font-weight:700;line-height:1.1}
+.cd small{font-size:10px;font-weight:800;color:var(--s);min-height:12px;line-height:12px}
+.cd.today b{text-decoration:underline}
+.cd.fut{opacity:.6}
+.cd[aria-pressed="true"]{border-color:var(--ink)}
+#cSum .chips{margin-top:14px}
+.slip{background:#fff;color:#1b2430;border:1px solid #d9dfe6;border-radius:8px;padding:10px;font-size:11px;-webkit-print-color-adjust:exact;print-color-adjust:exact;margin-bottom:14px}
+.slip .band{background:#f5f6f8;padding:12px;text-align:center}
+.slip .band img{display:block;max-height:44px;max-width:60%;object-fit:contain;margin:0 0 8px 0}
+.slip .band b{display:block;font-size:20px}
+.slip .band .ttl{font-size:14px;margin-top:8px}
+.slip table{width:100%;border-collapse:collapse}
+.slip .emp{margin:12px 0;border-bottom:1.5px solid #9aa0a6}
+.slip .emp td{padding:5px 3px;vertical-align:top}
+.slip .emp td.l{width:24%}.slip .emp td.v{width:26%;font-weight:700}
+.slip .st th,.slip .st td{border:1px solid #9aa0a6;padding:6px}
+.slip .st .h1 th{font-size:14px;padding:8px}
+.slip .st th{text-align:center}
+.slip .r{text-align:right;font-variant-numeric:tabular-nums}
+.slip .st tr.b td{font-weight:800}
+.slip .wd2{margin:10px 0 0}
+.slip .ft{margin-top:10px;color:#6a7686}
+@page{margin:12mm}
+@media print{body{background:#fff}.top,.bar,#msg,#perm,.noprint{display:none!important}main{padding:0;max-width:none}.slip{border:0;border-radius:0;padding:0}}
+.bar{overflow-x:auto;scrollbar-width:none}.bar::-webkit-scrollbar{display:none}.tab{flex:0 0 auto;min-width:64px}
+#tripCard{text-align:center}#tripCard .status{justify-content:center}#tripE{font-size:26px}
+.dlg{position:fixed;inset:0;z-index:10;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px}
+.dbox{background:var(--card);border:2px solid var(--warn);border-radius:16px;padding:16px;width:100%;max-width:440px}
+#map{position:relative;z-index:0;height:340px;border-radius:14px;border:1px solid var(--line);margin-bottom:14px}
+.res{text-align:left;margin-top:6px;font-size:14px;padding:10px}
+.tw{overflow-x:auto;margin-top:10px}.tw table{border-collapse:collapse;min-width:800px;font-size:12px;font-variant-numeric:tabular-nums}.tw th,.tw td{border:1px solid var(--line);padding:6px;text-align:left;white-space:nowrap}
+</style>
+
+<style id="mobile-size-fix">
+/* Phone layout: 320px–480px, including safe areas and small screens */
+@media (max-width:480px){
+ html,body{width:100%;max-width:100%;overflow-x:hidden}
+ body{font-size:15px;-webkit-text-size-adjust:100%}
+ .top{width:100%;max-width:none;padding:10px 12px;align-items:center}
+ .logo{font-size:18px;line-height:1.15}.top small{display:none}
+ main{width:100%;max-width:none;padding:12px 12px calc(82px + env(safe-area-inset-bottom,0px))}
+ .card{padding:14px 12px;margin-bottom:12px;border-radius:14px}
+ .ph{font-size:21px;margin:4px 0 10px}.clock{font-size:clamp(44px,15vw,58px);line-height:1.05}.elapsed{font-size:30px}
+ #punch{width:min(46vw,164px);height:min(46vw,164px);min-width:132px;min-height:132px;margin:16px auto 8px;font-size:19px;box-shadow:0 0 0 7px color-mix(in srgb,var(--in) 18%,transparent),0 8px 18px color-mix(in srgb,var(--in) 30%,transparent)}
+ #punch.out{box-shadow:0 0 0 7px color-mix(in srgb,var(--out) 18%,transparent),0 8px 18px color-mix(in srgb,var(--out) 30%,transparent)}
+ .hero{gap:12px;padding:14px}.hero .big{font-size:clamp(38px,13vw,48px)}
+ .tiles,.chips{gap:8px}.tile{padding:10px}.tile b{font-size:19px}.chip{padding:9px 10px;font-size:13px}.chip b{font-size:16px}
+ .cal{gap:3px}.cal .wd{font-size:10px}.cd{height:44px;border-radius:8px;font-size:13px}.cd b{font-size:13px}.cd small{font-size:8px;line-height:10px;min-height:10px}
+ .days{gap:3px}.days label{font-size:10px;padding:5px 0}.days input{width:13px;height:13px}
+ .mnav{gap:6px}.mnav b{font-size:15px}.mnav .ghost{padding:6px 13px;font-size:18px}
+ .row{gap:7px;flex-wrap:wrap}.row label{font-size:13px}.row input{min-width:0;flex:1}
+ .mk{gap:5px}.mk button{font-size:11px;padding:8px 4px}
+ .log{gap:2px 6px}.log span{font-size:12px}.dur{font-size:13px}
+ #map{height:260px}.dbox,.dlg{padding:12px}.dbox{max-height:calc(100dvh - 24px);overflow:auto}
+ .slip{font-size:9px;padding:7px;overflow-x:auto}.slip .band{padding:9px}.slip .band b{font-size:16px}.slip .emp td{padding:4px 2px}.slip .st th,.slip .st td{padding:4px 3px}
+ .bar{width:100%;max-width:none;padding:5px 4px calc(5px + env(safe-area-inset-bottom,0px))}.tab{min-width:58px;font-size:10px}.tab svg{width:21px;height:21px}
+ #msg{left:10px;right:10px;bottom:calc(68px + env(safe-area-inset-bottom,0px));font-size:13px}
+ #lg{padding:12px;padding-top:max(12px,env(safe-area-inset-top,0px));padding-bottom:max(12px,env(safe-area-inset-bottom,0px));align-items:flex-start}
+ #lg .box{max-width:100%;padding:18px 16px;margin:auto 0}#lg h1{font-size:22px}#lg input{font-size:16px;padding:11px 10px}#lg .pwview{min-width:58px;padding:11px 8px;font-size:12px}#lg .b{font-size:16px;min-height:46px}#lgout{right:8px;top:8px;padding:6px 10px;font-size:12px;width:auto}
+}
+@media (max-width:359px){.top small{display:none}main{padding-left:10px;padding-right:10px}.card{padding:12px 10px}.cd{height:40px}.cd small{display:none}#punch{width:132px;height:132px}.tiles,.chips{grid-template-columns:1fr}.hero .big{font-size:38px}}
+</style>
+<style id="polish-fix">
+/* Minimal fixes only. Attendance, Reports, Salary and payslip styling is exactly as in the original file. */
+button,input,select,label,.tab{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+/* header: Logout no longer overlaps the subtitle */
+.top{display:flex;align-items:center;gap:10px}
+.top .logo{flex:1;min-width:0}
+.top small{flex:none;white-space:nowrap}
+#lgout{position:static!important;flex:none;width:auto;margin:0 0 0 4px;padding:8px 14px;font-size:13px;min-height:36px;border-radius:10px}
+/* Settings checkboxes (auto check-in, alarm) were stretched by the generic .row input rule */
+#p-settings .row input[type=checkbox]{flex:none!important;width:22px!important;height:22px!important;min-width:22px}
+#p-settings .row label[for=auto],#p-settings .row label[for=alm]{white-space:normal}
+@media (max-width:480px){
+ /* 16px stops iOS zooming into the login and settings fields */
+ #lg input,#p-settings input{font-size:16px!important}
+}
+</style>
+</head>
+<body>
+<header class="top"><span class="logo">Punch</span><small>Location attendance</small></header>
+<main>
+  <div id="perm">
+    <b>Location is blocked for this page</b>
+    <ol style="margin:8px 0 10px;padding-left:20px">
+      <li>Tap the lock or settings icon next to the web address.</li>
+      <li>Tap Permissions, then Location, then Allow.</li>
+      <li>Come back here. This page updates by itself.</li>
+    </ol>
+    <button class="ghost" id="recheck">I have allowed it, check again</button>
+  </div>
+
+  <section class="pane" id="p-home">
+    <h2 class="ph">Check In</h2>
+    <p class="clock" id="clock">--:--</p>
+    <p class="date" id="date"></p>
+    <div id="grace"></div>
+    <div class="card" id="statusCard">
+      <div class="status"><span class="dot"></span><span id="stText">Checked out</span></div>
+      <p class="elapsed" id="elapsed">0h 00m 00s</p>
+      <p class="sub" id="stSub">Today's total: 0h 00m</p>
+    </div>
+    <button id="punch">Check in</button>
+    <div class="row"><button class="ghost" id="saveHomeHere">Save current location</button></div>
+  </section>
+
+  <section class="pane" id="p-trips" hidden>
+    <h2 class="ph">Home &amp; Trips</h2>
+    <div class="card" id="tripCard" hidden>
+      <div class="status"><span class="dot"></span><span id="tripT"></span></div>
+      <p class="elapsed" id="tripE"></p>
+      <p class="sub" id="tripS"></p>
+      <div class="row"><button class="ghost" id="tripX" hidden>Cancel this trip</button></div>
+    </div>
+    <div class="card">
+      <h2>Home</h2>
+      <p class="sub" id="homeText"></p>
+      <div class="row"><button class="ghost" id="setHome">Set home to my location</button></div>
+      <div class="row"><button class="ghost" id="saveHere">Save current location</button></div>
+      <div class="row"><input type="checkbox" id="trk" style="width:22px;height:22px"><label for="trk" style="color:var(--ink);white-space:normal">Enable automatic Home ↔ Workplace travelling check-in</label></div>
+      <p class="sub">Morning: leave Home by 500 m → Travelling Check-In starts → reach Workplace → Travelling Check-In stops → regular work Check-In. Evening: Work Check-Out → Travelling Check-In starts → reach Home → Travelling Check-In stops.</p>
+    </div>
+    <div class="card">
+      <h2>Saved places</h2>
+      <div id="places"></div>
+    </div>
+  </section>
+
+  <section class="pane" id="p-history" hidden>
+    <h2 class="ph">History</h2>
+    <div class="card"><div id="hist"></div></div>
+  </section>
+
+  <section class="pane" id="p-attendance" hidden>
+    <h2 class="ph">Attendance</h2>
+    <div class="card">
+      <div class="mnav"><button class="ghost" id="cprev" aria-label="Previous month">&lsaquo;</button><b id="cmon"></b><button class="ghost" id="cnext" aria-label="Next month">&rsaquo;</button></div>
+      <div class="cal" id="cal"></div>
+      <p class="sub" id="cdet"></p>
+      <div id="cSum"></div>
+    </div>
+    <div class="card">
+      <h2>Mark days in bulk</h2>
+      <p class="sub" id="csub">Tap days on the calendar to select them.</p>
+      <div class="row"><button class="ghost" id="call">Select whole month</button><button class="ghost" id="cnone">Clear selection</button></div>
+      <div class="row"><select class="in2" id="cs"><option value="present">Present</option><option value="weekoff">Week off</option><option value="holiday">Holiday</option><option value="leave">Leave</option><option value="absent">Absent</option><option value="">Clear mark</option></select><button class="ghost" id="cgo" style="width:auto;padding:10px 18px">Apply</button></div>
+      <p class="sub">Days with a recorded check-in of 4 hrs or more keep their recorded status. Only Holiday and Clear apply to them.</p>
+      <p class="sub" style="margin-top:14px">Or mark a range of days</p>
+      <div class="row"><input class="in2" type="date" id="bf" aria-label="From date"><input class="in2" type="date" id="bt" aria-label="To date"></div>
+      <div class="row"><select class="in2" id="bs"><option value="present">Present</option><option value="weekoff">Week off</option><option value="holiday">Holiday</option><option value="leave">Leave</option><option value="absent">Absent</option><option value="">Clear mark</option></select><button class="ghost" id="bgo" style="width:auto;padding:10px 18px">Apply</button></div>
+    </div>
+  </section>
+
+  <section class="pane" id="p-report" hidden>
+    <h2 class="ph">Reports</h2>
+    <div class="card">
+      <div class="row"><label for="mon">Show</label><select id="mon" style="font:inherit;width:100%;padding:10px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink)"><option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option></select></div>
+      <p class="sub">Reports keep the last 90 days. Older records are deleted automatically.</p>
+      <p class="sub">Daily rule: under 1 hr is not counted, 1 to 4 hrs Absent, 4 to 6 hrs Half day, 6 to 9 hrs Full day, 9 hrs or more Shift completed. Time after 9 hrs is overtime.</p>
+      <div id="repSum"></div>
+      <div class="row"><button class="ghost" id="csv">Download CSV</button><button class="ghost" id="share">Share</button></div>
+    </div>
+    <div class="card"><div id="rep"></div></div>
+  </section>
+
+  <section class="pane" id="p-pay" hidden>
+    <h2 class="ph">Salary</h2>
+    <div class="card"><div id="payForm"></div><p class="sub">Pay cycle runs from the 21st to the 20th. Days after today are not counted. Mark days in Attendance.</p></div>
+    <div class="card"><div id="payOut"></div></div>
+    <div class="row"><button class="ghost" id="slipBtn">View payslip</button></div>
+    <div class="row"><button class="ghost" id="payCsv">Download salary CSV</button></div>
+  </section>
+
+  <section class="pane" id="p-slip" hidden>
+    <h2 class="ph noprint">Payslip</h2>
+    <div class="card noprint">
+      <div class="row"><label for="sf_month">Month</label><select class="in2" id="sf_month"></select></div>
+      <input type="file" id="slogo" accept="image/*" hidden>
+      <div class="row"><button class="ghost" id="slogoBtn">Add company logo</button><button class="ghost" id="slogoDel">Remove logo</button></div>
+      <p class="sub">Choose your company logo image (for example the DMart logo) from your phone. It is saved on this phone only. Everything else is filled in automatically from Settings and Salary.</p>
+    </div>
+    <div class="slip" id="slip"></div>
+    <div class="row noprint"><button class="ghost" id="slipBack">Back to Salary</button><button id="slipPrint" style="background:var(--in);font-size:16px;padding:12px">Print / Save as PDF</button></div>
+  </section>
+
+  <section class="pane" id="p-maps" hidden>
+    <h2 class="ph">Maps</h2>
+    <div class="card">
+      <div class="row"><label for="mfrom">From</label><select class="in2" id="mfrom"></select></div>
+      <div class="row"><input class="in2" id="mq" type="search" placeholder="Search destination" aria-label="Search destination"><button class="ghost" id="ms" style="width:auto;padding:10px 18px">Search</button></div>
+      <div id="mres"></div>
+      <div class="row"><label for="mmode">Travel by</label><select class="in2" id="mmode"><option value="car">Car</option><option value="bike">Bike</option><option value="foot">Walk</option></select></div>
+      <div class="row"><button class="ghost" id="mho">Home to office</button><button class="ghost" id="msp">Save destination</button></div>
+    </div>
+    <div id="map" role="application" aria-label="Map"></div>
+    <p class="sub" id="mapmsg" hidden>The map could not load. Check your internet connection and reopen this tab.</p>
+    <div class="card" id="mout"><p class="sub">Search a destination or tap the map to see travel time.</p></div>
+  </section>
+
+  <section class="pane" id="p-lib" hidden>
+    <h2 class="ph">Library</h2>
+    <div class="card"><h2>Trip log</h2>
+      <p class="sub">Trips between saved places are logged automatically and kept for 1 year.</p>
+      <div class="row"><button class="ghost" id="tcsv">Download CSV</button><button class="ghost" id="tclr">Clear trips</button></div>
+      <div class="tw"><table id="ttab"></table></div>
+    </div>
+  </section>
+
+  <section class="pane" id="p-settings" hidden>
+    <h2 class="ph">Settings</h2>
+    <div class="card">
+      <h2>Workplace</h2>
+      <p class="sub" id="wpText">Not set. Stand at your workplace and tap below.</p>
+      <div class="row"><input type="text" id="wpName" placeholder="Workplace name (for reports)" maxlength="60" aria-label="Workplace name" style="font:inherit;width:100%;padding:10px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink)"></div>
+      <div class="row"><label for="rad">Allowed radius (m)</label><input id="rad" type="number" min="20" max="2000" value="150"></div>
+      <div class="row"><label for="grace_m">Wait outside radius (min)</label><input id="grace_m" type="number" min="0" max="240" value="30"></div>
+      <p class="sub">If you leave the radius while checked in, time keeps counting for this long. If you are not back by then, you are checked out.</p>
+      <p class="sub">Weekly off days</p><div class="days" id="wo"></div>
+      <div class="row"><label for="join">Joining date</label><input class="in2" type="date" id="join"></div>
+      <p class="sub">Days before this date show as Not joined and are not paid.</p>
+      <div class="row"><button class="ghost" id="setWp">Set workplace to my location</button></div>
+      <div class="row"><input type="checkbox" id="auto" style="width:22px;height:22px"><label for="auto" style="color:var(--ink);white-space:normal">Auto check-in and check-out at workplace (keep this page open)</label></div>
+    </div>
+    <div class="card">
+      <h2>Work-hours alarm</h2>
+      <div class="row"><input type="checkbox" id="alm" style="width:22px;height:22px"><label for="alm" style="color:var(--ink);white-space:normal">Ring an alarm when my shift is complete</label></div>
+      <div class="row"><label for="almh">Shift length (hours)</label><input id="almh" type="number" min="1" max="24" step="0.5" value="9"></div>
+      <div class="row"><label for="almSnd">Alarm sound</label><select id="almSnd" class="in2"><option value="classic">Classic beep</option><option value="digital">Digital alarm</option><option value="bell">Bell</option><option value="siren">Siren</option><option value="custom" hidden>My own sound</option></select></div>
+      <div class="row"><label for="almVol">Volume</label><input id="almVol" type="range" min="0.2" max="1" step="0.05" value="1" style="accent-color:var(--in);min-height:32px"></div>
+      <div class="row"><label for="almFile">Use my own sound</label><input id="almFile" type="file" accept="audio/*" style="font-size:13px"></div>
+      <p class="sub">The alarm rings once the hours have passed since you checked in. Keep this page open (or in the background) and allow notifications. Phone browsers cannot ring if the page is fully closed.</p>
+      <div class="row"><button class="ghost" id="almTest">Test alarm</button></div>
+    </div>
+    <div class="card">
+      <h2>Data</h2>
+      <p class="sub">Records are saved on this phone only. Download the CSV from Reports as a backup.</p>
+      <div class="row"><button class="ghost" id="clear">Clear all records</button></div>
+    </div>
+  </section>
+</main>
+
+<div class="dlg" id="dlg" hidden role="dialog" aria-modal="true" aria-labelledby="dlgT"><div class="dbox"><b id="dlgT"></b><p class="sub" id="dlgP"></p><input class="in2" id="dlgIn" maxlength="60" placeholder="Location name" aria-label="Location name"><p class="sub" id="dlgE" style="color:var(--out)"></p><div class="row"><button class="ghost" id="dlgNo">Cancel</button><button id="dlgOk" style="background:var(--in);font-size:16px;padding:12px">Save</button></div></div></div>
+<div id="msg" role="status" aria-live="polite"></div>
+
+<nav class="bar" aria-label="Main">
+  <button class="tab" data-t="home" aria-current="page"><svg viewBox="0 0 24 24"><path d="M4 10h16v10H4zM6 10V7h12v3M8 14h8M8 17h5"/></svg><span>Check In</span></button>
+  <button class="tab" data-t="trips" aria-current="false"><svg viewBox="0 0 24 24"><path d="M4 19V5h16v14H4z"/><path d="M7 16l4-4 3 3 3-5"/><circle cx="7" cy="16" r="1"/><circle cx="11" cy="12" r="1"/><circle cx="14" cy="15" r="1"/><circle cx="17" cy="10" r="1"/></svg><span>Home &amp; Trips</span></button>
+  <button class="tab" data-t="maps" aria-current="false"><svg viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11a7 7 0 0 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span>Maps</span></button>
+  <button class="tab" data-t="lib" aria-current="false"><svg viewBox="0 0 24 24"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11M9 8h6"/></svg><span>Library</span></button>
+  <button class="tab" data-t="history" aria-current="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>History</span></button>
+  <button class="tab" data-t="attendance" aria-current="false"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8 15l2.5 2.5L16 13"/></svg><span>Attendance</span></button>
+  <button class="tab" data-t="report" aria-current="false"><svg viewBox="0 0 24 24"><path d="M5 3h10l4 4v14H5z"/><path d="M9 9h3M9 13h6M9 17h6"/></svg><span>Reports</span></button>
+  <button class="tab" data-t="pay" aria-current="false"><svg viewBox="0 0 24 24"><path d="M4 7h16v12H4zM4 7l3-3h10M15 13h3"/></svg><span>Salary</span></button>
+  <button class="tab" data-t="settings" aria-current="false"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg><span>Settings</span></button>
+</nav>
+
+<script>
+const $=id=>document.getElementById(id);
+let S={wp:null,radius:150,open:null,logs:[],marks:{},pay:{},grace:30,wo:[0],outSince:null,locs:[],trips:[],tripN:0,home:null,trip:null,here:null,homeDeparture:500};
+try{const r=localStorage.getItem('punch');if(r)S=Object.assign(S,JSON.parse(r))}catch(e){}
+S.locs=S.locs||[];S.trips=S.trips||[];S.tripN=S.tripN||0;if(S.wp){S.wp.name=S.wp.name||'Workplace';if(!S.locs.some(l=>l.name===S.wp.name))S.locs.push({name:S.wp.name,lat:S.wp.lat,lng:S.wp.lng})}
+function dayKey(t){const d=new Date(t);return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}
+function prune(){
+  const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-89);const c=d.getTime();
+  S.logs=S.logs.filter(l=>l.out>=c);S.trips=(S.trips||[]).filter(t=>t.t1>=Date.now()-365*864e5);
+  Object.keys(S.marks).forEach(k=>{if(new Date(k+'T00:00:00').getTime()<c)delete S.marks[k]});
+}
+const save=()=>{prune();try{localStorage.setItem('punch',JSON.stringify(S))}catch(e){}};
+const pad=n=>String(n).padStart(2,'0');
+const hms=ms=>{const s=Math.max(0,Math.floor(ms/1000));return `${Math.floor(s/3600)}h ${pad(Math.floor(s%3600/60))}m ${pad(s%60)}s`};
+const hm=ms=>{const m=Math.floor(ms/60000);return `${Math.floor(m/60)}h ${pad(m%60)}m`};
+const tm=t=>new Date(t).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});
+const dy=t=>new Date(t).toLocaleDateString([], {weekday:'short',day:'numeric',month:'short'});
+let mt;const say=(t,e)=>{const m=$('msg');m.textContent=t;m.className='show'+(e?' err':'');clearTimeout(mt);mt=setTimeout(()=>{m.className=''},5000);if(/permission denied/i.test(t))showPerm(true)};
+function showPerm(v){$('perm').classList.toggle('show',v)}
+async function watchPerm(){
+  try{
+    const st=await navigator.permissions.query({name:'geolocation'});
+    const apply=()=>{
+      showPerm(st.state==='denied');
+      if(st.state==='granted'&&(S.auto||S.trk)&&wid===null)startAuto();
+      if(st.state==='prompt')navigator.geolocation.getCurrentPosition(()=>{},()=>{});
+    };
+    st.onchange=apply;apply();
+  }catch(e){}
+}
+
+function dist(a,b,c,d){const R=6371000,p=Math.PI/180,x=(c-a)*p,y=(d-b)*p;
+  const h=Math.sin(x/2)**2+Math.cos(a*p)*Math.cos(c*p)*Math.sin(y/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
+
+function getPos(){return new Promise((ok,no)=>{
+  if(!navigator.geolocation)return no({message:'Location is not supported on this device.'});
+  navigator.geolocation.getCurrentPosition(ok,e=>no({message:e.code===1?'Location permission denied. Allow location for this site in your browser settings.':e.code===3?'Location timed out. Move to an open area and try again.':'Could not get your location.'}),{enableHighAccuracy:true,timeout:15000,maximumAge:0})})}
+
+async function punch(){
+  if(!S.wp){say('Set your workplace first.',true);return}
+  $('punch').disabled=true;say('Getting your location…');
+  try{
+    const p=await getPos(),{latitude:la,longitude:lo,accuracy:ac}=p.coords;
+    const d=dist(la,lo,S.wp.lat,S.wp.lng);
+    if(d>S.radius+Math.min(ac,50)&&!(S.open&&S.outSince)){say(`You are ${Math.round(d)} m from the workplace. Move within ${S.radius} m to ${S.open?'check out':'check in'}.`,true);return}
+    const now=Date.now();
+    if(!S.open){S.open={t:now,lat:la,lng:lo};S.outSince=null;arriveAt(S.wp.name,la,lo,now);if(!S.auto)startAuto(1);say(`Checked in at ${tm(now)}.`)}
+    else{
+      S.logs.unshift({in:S.open.t,out:now,inLat:S.open.lat,inLng:S.open.lng,outLat:la,outLng:lo});
+      /* Remember the workplace as the current saved place so the next
+         movement outside its radius can start the return trip. */
+      if(S.wp){S.here=S.wp.name;S.hereLL={la,lo};startTravelFrom(S.wp.name,la,lo,now);}
+      S.open=null;S.outSince=null;if(!S.auto)stopAuto();say(`Checked out at ${tm(now)}.${S.trip?' Travelling Check-In started.':''}`)
+    }
+    save();render();
+  }catch(e){say(e.message,true)}finally{$('punch').disabled=false}
+}
+
+function setWp(){pickHere('wp')}
+
+function todayTotal(){const s=new Date();s.setHours(0,0,0,0);let t=0;
+  S.logs.forEach(l=>{if(l.out>=s)t+=l.out-Math.max(l.in,s)});
+  if(S.open)t+=Date.now()-Math.max(S.open.t,s);return t}
+
+function render(){
+  const on=!!S.open;
+  $('statusCard').className='card'+(on?' on':'');
+  $('stText').textContent=on?`Checked in since ${tm(S.open.t)}`:'Checked out';
+  $('punch').textContent=on?'Check out':'Check in';
+  $('punch').className=on?'out':'';
+  $('rad').value=S.radius;$('join').value=S.join||'';$('grace_m').value=S.grace;document.querySelectorAll('#wo input').forEach(c=>{c.checked=(S.wo||[]).includes(+c.dataset.d)});
+  $('wpText').textContent=S.wp?`Saved: ${S.wp.name||'Workplace'} (${S.wp.lat.toFixed(5)}, ${S.wp.lng.toFixed(5)})`:'Not set. Stand at your workplace and tap below.';
+  if(S.wp&&document.activeElement!==$('wpName'))$('wpName').value=S.wp.name||'';
+  $('hist').innerHTML=S.logs.length?S.logs.slice(0,30).map(l=>`<div class="log"><b>${dy(l.in)}</b><span class="dur">${hm(l.out-l.in)}</span><span>In ${tm(l.in)} · Out ${tm(l.out)}</span></div>`).join(''):'<p class="empty">No records yet. Your check-ins will show here.</p>';
+  tick();renderRep();renderCal();renderLib();renderTrip();
+}
+
+function tick(){
+  const n=new Date();
+  $('clock').textContent=`${pad(n.getHours())}:${pad(n.getMinutes())}`;
+  $('date').textContent=n.toLocaleDateString([], {weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  graceCheck();const g=$('grace'),o=S.open&&S.outSince;g.className=o?'show':'';if(o)g.textContent=`You are outside the workplace radius. Time keeps counting. Auto check-out in ${hms(S.outSince+outMs()-Date.now())} unless you return.`;
+  $('elapsed').textContent=S.open?hms(Date.now()-S.open.t):'0h 00m 00s';tripTick();
+  $('stSub').textContent=`Today's total: ${hm(todayTotal())}`;
+}
+
+let wid=null,lock=null,outCount=0;
+async function getLock(){try{lock=await navigator.wakeLock.request('screen')}catch(e){}}
+function stopAuto(f){if(S.trk&&!f)return;if(wid!==null)navigator.geolocation.clearWatch(wid);wid=null;try{lock&&lock.release()}catch(e){}lock=null}
+async function startAuto(q){
+  if(!S.wp&&!S.trk){say('Set your workplace first.',true);S.auto=false;$('auto').checked=false;save();return}
+  if(!navigator.geolocation){say('Location is not supported on this device.',true);return}
+  stopAuto(1);await getLock();
+  wid=navigator.geolocation.watchPosition(onPos,()=>say('Auto mode: location unavailable. Check location permission.',true),{enableHighAccuracy:true,maximumAge:5000,timeout:30000});
+  if(!q)say('Auto mode is on. Keep this page open and the screen on.');
+}
+let lp=null;
+const outMs=()=>(S.grace??30)*60000;
+function graceCheck(){
+  if(!S.open||!S.outSince)return;
+  const end=S.outSince+outMs();if(Date.now()<end)return;
+  S.logs.unshift({in:S.open.t,out:end,inLat:S.open.lat,inLng:S.open.lng,outLat:lp?lp.la:undefined,outLng:lp?lp.lo:undefined});
+  const la=lp?lp.la:S.wp.lat,lo=lp?lp.lo:S.wp.lng;
+  if(S.wp)startTravelFrom(S.wp.name,la,lo,end);
+  S.open=null;S.outSince=null;if(!S.auto)stopAuto();save();render();say(`Checked out at ${tm(end)}.${S.trip?' Travelling Check-In started.':''}`);
+}
+function onPos(p){
+  const{latitude:la,longitude:lo,accuracy:ac}=p.coords;
+  if(ac>100)return;
+  lp={la,lo};const now=Date.now();tripPos(la,lo,now);if(!S.wp){graceCheck();return}const d=dist(la,lo,S.wp.lat,S.wp.lng);
+  if(d<=S.radius){
+    if(S.outSince){S.outSince=null;save();render()}
+    if(!S.open&&S.auto){
+      S.open={t:now,lat:la,lng:lo};
+      /* Reaching the workplace closes an active trip before attendance
+         starts. */
+      arriveAt(S.wp.name,la,lo,now);
+      save();render();say(`Auto checked in at ${tm(now)}.`);
+    }
+  }else if(S.open&&d>S.radius+30&&!S.outSince){S.outSince=now;save();render()}
+  graceCheck();
+}
+$('auto').onchange=()=>{
+  S.auto=$('auto').checked;
+  /* Auto attendance and Home ↔ Workplace trip logging work together
+     when both saved locations exist. */
+  if(S.auto&&S.home&&S.wp)S.trk=true;
+  save();
+  S.auto?startAuto():(S.open||stopAuto(),say('Auto mode is off.'));
+  render();
+};
+document.addEventListener('visibilitychange',()=>{if((S.auto||S.open||S.trk)&&document.visibilityState==='visible')startAuto(1)});
+$('recheck').onclick=()=>getPos().then(()=>{showPerm(false);say('Location allowed.');if(S.auto)startAuto()}).catch(e=>say(e.message,true));
+$('auto').checked=!!S.auto;
+if(S.trk&&S.home&&!S.trip&&!S.here){
+  S.here=S.home.name;
+  S.hereLL={la:S.home.lat,lo:S.home.lng};
+  save();
+}
+if(S.auto||S.open||S.trk)startAuto(1);
+watchPerm();
+const H=3600000,RULE={min:1*H,half:4*H,full:6*H,shift:9*H};
+const WORK=['Absent','Half day','Full day','Shift completed'];
+function classify(ms){
+  if(ms<RULE.min)return 'none';
+  if(ms<RULE.half)return 'Absent';
+  if(ms<RULE.full)return 'Half day';
+  if(ms<RULE.shift)return 'Full day';
+  return 'Shift completed';
+}
+function repRows(){const n=+$('mon').value||30,d0=new Date();d0.setHours(0,0,0,0);const a=[];for(let i=0;i<n;i++){const d=new Date(d0);d.setDate(d0.getDate()-i);a.push(d)}return dayRows(a)}
+function dayRows(ds){
+  const by={};
+  S.logs.forEach(l=>{const k=dayKey(l.in),x=by[k]=by[k]||{a:l.in,b:l.out,ms:0,lat:l.inLat,lng:l.inLng};
+    if(l.in<x.a){x.a=l.in;x.lat=l.inLat;x.lng=l.inLng}x.b=Math.max(x.b,l.out);x.ms+=l.out-l.in});
+  if(S.open){const k=dayKey(S.open.t),x=by[k]=by[k]||{a:S.open.t,b:undefined,ms:0,lat:S.open.lat,lng:S.open.lng};x.ms+=Date.now()-S.open.t;x.live=true}
+  return ds.map(d=>{const k=dayKey(d.getTime()),x=by[k],c=x?classify(x.ms):'none';
+    if(S.join&&k<S.join)return{k,d,st:'Not joined'};
+    if(x&&c!=='none')return{k,d,...x,st:c,ot:Math.max(0,x.ms-RULE.shift),hol:S.marks[k]==='holiday'};
+    const m=S.marks[k]||((S.wo||[]).includes(d.getDay())?'weekoff':'');
+    return{k,d,...(x||{}),st:m==='weekoff'?'Week off':m==='leave'?'Leave':m==='holiday'?'Holiday':m==='absent'?'Marked absent':m==='present'?'Marked present':'No check-in',short:x?x.ms:undefined}});
+}
+const sc=t=>({'Full day':'#0f8a6d','Shift completed':'#0a6b54','Marked present':'#0f8a6d','Half day':'#d99a06','Absent':'#dc2626','Marked absent':'#dc2626','Week off':'#3b6fd4','Holiday':'#7c3aed','Leave':'#ea580c'}[t]||'#6a7686');
+const f5=v=>v===undefined?'':(+v).toFixed(5);
+function renderRep(){
+  const r=repRows(),loc=(S.wp&&S.wp.name)||'Workplace';
+  const w=r.filter(x=>WORK.includes(x.st)),tot=w.reduce((s,x)=>s+x.ms,0),ot=w.reduce((s,x)=>s+(x.ot||0),0),c=s=>r.filter(x=>x.st===s).length;
+  const full=c('Full day')+c('Shift completed')+c('Marked present'),half=c('Half day');
+  $('repSum').innerHTML=`<div class="hero"><div class="big">${full+half/2}</div><div>days attendance<br><small>Full ${full}, Half ${half}</small></div></div><div class="tiles"><div class="tile"><span>Time worked</span><b>${hm(tot)}</b></div><div class="tile ot"><span>Overtime</span><b>${hm(ot)}</b></div></div><div class="chips"><span class="chip" style="--c:#0f8a6d"><i></i>Present<b>${full}</b></span><span class="chip" style="--c:#d99a06"><i></i>Half day<b>${half}</b></span><span class="chip" style="--c:#dc2626"><i></i>Absent<b>${c('Absent')+c('Marked absent')}</b></span><span class="chip" style="--c:#3b6fd4"><i></i>Week off<b>${c('Week off')}</b></span><span class="chip" style="--c:#7c3aed"><i></i>Holiday<b>${c('Holiday')}</b></span><span class="chip" style="--c:#ea580c"><i></i>Leave<b>${c('Leave')}</b></span><span class="chip" style="--c:var(--mute)"><i></i>No check-in<b>${c('No check-in')}</b></span></div>`;
+  $('rep').innerHTML=r.map(x=>{
+    if(WORK.includes(x.st))return `<div class="log" style="--s:${sc(x.st)}"><b>${dy(x.d)}</b><span class="dur">${hm(x.ms)}</span><span>${esc(loc)}${x.lat!==undefined?` (${f5(x.lat)}, ${f5(x.lng)})`:''}<br>In ${tm(x.a)}, Out ${x.live?'still checked in':tm(x.b)}<br><b style="color:var(--s)">${x.st}${x.live?' so far':''}</b>${x.ot?`, Overtime ${hm(x.ot)}`:''}${x.hol?', Holiday work (double pay)':''}</span><div class="mk"><button data-k="${x.k}" data-v="holiday" class="${x.hol?'on':''}">Holiday</button></div></div>`;
+    const btn=(v,t)=>`<button data-k="${x.k}" data-v="${v}" class="${x.st===t||x.st==='Marked '+t.toLowerCase()?'on':''}">${t}</button>`;
+    const note=x.st==='No check-in'?(x.short!==undefined?`Only ${hm(x.short)} at workplace, not counted`:'No check-in'):x.st==='Not joined'?'Before joining date':x.st==='Week off'&&!S.marks[x.k]?'Weekly off':'Marked by you';
+    return `<div class="log" style="--s:${sc(x.st)}"><b>${dy(x.d)}</b><span class="dur" style="color:var(--s)">${x.short!==undefined?hm(x.short):x.st==='No check-in'?'':x.st}</span><span>${note}${x.a!==undefined?`<br>In ${tm(x.a)}, Out ${x.live?'still checked in':tm(x.b)}`:''}</span>${x.st==='Not joined'?'':`<div class="mk">${btn('present','Present')}${btn('weekoff','Week off')}${btn('holiday','Holiday')}${btn('leave','Leave')}${btn('absent','Absent')}</div>`}</div>`;
+  }).join('');
+}
+function repText(){
+  const r=repRows(),loc=(S.wp&&S.wp.name)||'Workplace',q=v=>`"${String(v).replace(/"/g,'""')}"`;
+  const lines=['Date,Location,Latitude,Longitude,Status,Check in,Check out,Hours,Overtime hours'];
+  let tot=0,ot=0,full=0,half=0;
+  r.forEach(x=>{const has=WORK.includes(x.st);
+    if(has){tot+=x.ms;ot+=x.ot||0}
+    if(x.st==='Full day'||x.st==='Shift completed'||x.st==='Marked present')full++;
+    if(x.st==='Half day')half++;
+    const p=x.a!==undefined;lines.push([x.k,p?q(loc):'',p?f5(x.lat):'',p?f5(x.lng):'',x.st,p?tm(x.a):'',p&&!x.live&&x.b?tm(x.b):'',p?(x.ms/H).toFixed(2):'',p?((x.ot||0)/H).toFixed(2):''].join(','))});
+  lines.push(`Total,,,,${full+half/2} attendance days,,,${(tot/H).toFixed(2)},${(ot/H).toFixed(2)}`);
+  return lines.join('\n');
+}
+$('mon').onchange=renderRep;
+$('wpName').onchange=()=>{if(S.wp){const n=$('wpName').value.trim()||'Workplace',l=S.locs.find(x=>x.name===S.wp.name);if(S.locs.some(x=>x!==l&&x.name.toLowerCase()===n.toLowerCase())){say('That name is already used.',true);render();return}const old=S.wp.name;if(S.here===old)S.here=n;if(l)l.name=n;S.wp.name=n;save();render()}};
+$('rep').onclick=e=>{const b=e.target.closest('button[data-k]');if(!b)return;
+  const k=b.dataset.k,v=b.dataset.v;if(S.marks[k]===v)delete S.marks[k];else S.marks[k]=v;save();renderRep()};
+$('csv').onclick=()=>{
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([repText()],{type:'text/csv'}));
+  a.download=`attendance-last-${$('mon').value}-days.csv`;document.body.appendChild(a);a.click();a.remove();
+};
+$('share').onclick=async()=>{
+  const text=`Attendance report, last ${$('mon').value} days\n`+repText();
+  try{if(navigator.share)await navigator.share({title:'Attendance report',text});
+      else{await navigator.clipboard.writeText(text);say('Report copied.')}}catch(e){}
+};
+$('punch').onclick=punch;$('setWp').onclick=setWp;
+$('rad').onchange=()=>{S.radius=Math.min(2000,Math.max(20,+$('rad').value||150));save();render()};
+$('clear').onclick=()=>{if(confirm('Delete all attendance records?')){S.logs=[];save();render()}};
+function show(t){
+  document.querySelectorAll('.pane').forEach(p=>{p.hidden=p.id!=='p-'+t});
+  document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-current',b.dataset.t===(t==='slip'?'pay':t)?'page':'false'));
+  window.scrollTo(0,0);if(t==='report')renderRep();if(t==='attendance')renderCal();if(t==='pay')renderPay();if(t==='slip'){fillSlip();renderSlip()}if(t==='maps')openMaps();if(t==='lib')renderLib();if(t==='trips'){renderTrip();renderLib();}const ac=document.querySelector('.tab[aria-current="page"]');if(ac){const b=ac.parentElement;b.scrollLeft=ac.offsetLeft-(b.clientWidth-ac.clientWidth)/2}
+}
+document.querySelectorAll('.tab').forEach(b=>{b.onclick=()=>show(b.dataset.t)});
+$('grace_m').onchange=()=>{const v=parseInt($('grace_m').value);S.grace=isNaN(v)?30:Math.min(240,Math.max(0,v));save();render()};
+$('wo').innerHTML=['Su','Mo','Tu','We','Th','Fr','Sa'].map((n,i)=>`<label><input type="checkbox" data-d="${i}">${n}</label>`).join('');
+$('wo').onchange=e=>{const s=new Set(S.wo||[]),d=+e.target.dataset.d;if(e.target.checked)s.add(d);else s.delete(d);S.wo=[...s];save();render()};
+const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function cycOpts(){const n=new Date(),o=[];let y=n.getFullYear(),m=n.getMonth()-(n.getDate()<21?1:0);if(m<0){m=11;y--}
+  for(let i=0;i<3;i++){const e=new Date(y,m+1,20);o.push([`${y}-${pad(m+1)}`,`21 ${MN[m]} to 20 ${MN[e.getMonth()]} ${e.getFullYear()}`]);m--;if(m<0){m=11;y--}}return o}
+const PD={month:'',basicAmt:0,hraAmt:0,splAmt:0,basis:'cal',ot:1.5,hpd:9,vpf:0,pt:0,oth:0,leavePaid:1,holPaid:1,holDbl:1,pf:0,pfEr:0,esi:0};
+const PF=[['month','Pay cycle','select',cycOpts()],['basicAmt','Basic per month (₹)','number'],['hraAmt','HRA per month (₹)','number'],['splAmt','Special allowance per month (₹)','number'],['basis','Days basis','select',[['cal','Calendar days in month'],['work','Working days (no week offs)'],['26','Fixed 26 days'],['30','Fixed 30 days']]],['ot','Overtime pay','select',[[0,'Off'],[1,'1x'],[1.5,'1.5x'],[2,'2x']]],['hpd','Hours in a day','number'],['pf','PF employee (₹)','number'],['pfEr','PF employer (₹)','number'],['vpf','VPF (₹)','number'],['esi','ESI (₹)','number'],['pt','Professional tax (₹)','number'],['oth','Other deduction (₹)','number']];
+const PT=[['leavePaid','Leave is paid'],['holPaid','Holidays are paid'],['holDbl','Double pay if worked on a holiday']];
+const P=()=>{const q=Object.assign({},S.pay);if(!q.v2)['pf','pfEr','vpf','esi'].forEach(k=>delete q[k]);const p=Object.assign({},PD,q);const o=cycOpts();if(!o.some(x=>x[0]===p.month))p.month=o[0][0];return p};
+const inr=v=>'₹'+Math.round(v).toLocaleString('en-IN');
+function buildPay(){const p=P();
+  $('payForm').innerHTML=PF.map(([k,l,t,o])=>`<div class="row"><label for="pf_${k}">${l}</label>${t==='select'?`<select class="in2" id="pf_${k}" data-k="${k}">${o.map(([v,n])=>`<option value="${v}"${String(p[k])===String(v)?' selected':''}>${n}</option>`).join('')}</select>`:`<input class="in2" id="pf_${k}" data-k="${k}" type="${t}" value="${p[k]}">`}</div>`).join('')+PT.map(([k,l])=>`<div class="row"><input type="checkbox" id="pf_${k}" data-k="${k}"${p[k]?' checked':''} style="width:22px;height:22px"><label for="pf_${k}" style="color:var(--ink);white-space:normal">${l}</label></div>`).join('');
+}
+$('payForm').oninput=$('payForm').onchange=e=>{const el=e.target,k=el.dataset.k;if(!k)return;S.pay=Object.assign({},S.pay,{v2:1});S.pay[k]=el.type==='checkbox'?+el.checked:el.type==='number'?(+el.value||0):el.value;save();renderPay()};
+function calcPay(){
+  const p=P();p.ot=+p.ot||0;const[y,m]=p.month.split('-').map(Number),dim=Math.round((new Date(y,m,21)-new Date(y,m-1,21))/864e5),t0=new Date();t0.setHours(0,0,0,0);
+  const all=dayRows(Array.from({length:dim},(_,i)=>new Date(y,m-1,21+i))),r=all.filter(x=>x.d<=t0),c=s=>r.filter(x=>x.st===s).length;
+  const full=c('Full day')+c('Shift completed')+c('Marked present'),nj=c('Not joined'),half=c('Half day'),wo=c('Week off'),hol=c('Holiday'),lv=c('Leave'),ab=r.length-full-half-wo-hol-lv-nj;
+  const base=p.basis==='cal'?dim:p.basis==='work'?dim-all.filter(x=>x.st==='Week off').length:+p.basis;
+  const sal=p.basicAmt+p.hraAmt+p.splAmt,rate=base?sal/base:0,cnt=p.basis==='cal'||p.basis==='30';
+  let pay=full+half/2+(p.leavePaid?lv:0)+(p.holPaid?hol:0)+(cnt?wo:0);
+  if(p.basis==='26'||p.basis==='30')pay=Math.min(pay,base);
+  const hx=p.holDbl?r.filter(x=>x.hol).reduce((s,x)=>s+(x.st==='Half day'?.5:x.st==='Absent'?0:1),0):0;pay+=hx;
+  const k=base?pay/base:0,earned=sal*k,basic=p.basicAmt*k,hra=p.hraAmt*k,spl=p.splAmt*k;
+  const oh=r.reduce((s,x)=>s+(x.ot||0),0)/H,ota=p.ot?oh*(rate/(p.hpd||9))*p.ot:0,gross=earned+ota;
+  const pf=p.pf,pfEr=p.pfEr,vpf=p.vpf,esi=p.esi,net=gross-pf-vpf-esi-p.pt-p.oth;
+  const L=[['Attendance'],['Full days',full],['Half days',half],['Week offs',wo],['Holidays',hol],['Holiday double pay days',hx],['Leave',lv],['Absent / no check-in',ab],['Before joining',nj],['Payable days',`${pay} of ${base}`],['Rate per day',inr(rate)],['Earnings'],['Monthly salary (full)',inr(sal)],['Basic',inr(basic)],['HRA',inr(hra)],['Special allowance',inr(spl)]];
+  if(p.ot)L.push([`Overtime (${oh.toFixed(1)} h)`,inr(ota)]);
+  L.push(['Gross pay',inr(gross)],['Deductions']);
+  L.push(['PF (employee)',inr(pf)],['VPF',inr(vpf)],['ESI',inr(esi)],['Professional tax',inr(p.pt)],['Other deduction',inr(p.oth)],['Total deductions',inr(pf+vpf+esi+p.pt+p.oth)]);
+  L.push(['Net pay',inr(net),'tot']);L.push(['Employer contribution'],['PF (employer)',inr(pfEr)]);return L;
+}
+function renderPay(){$('payOut').innerHTML=calcPay().map(([l,v,c])=>v===undefined?`<div class="kv h"><b>${l}</b></div>`:`<div class="kv ${c||''}"><span>${l}</span><b>${v}</b></div>`).join('')}
+$('payCsv').onclick=()=>{const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\ufeff'+calcPay().map(([l,v])=>`"${l}"${v===undefined?'':`,"${v}"`}`).join('\n')],{type:'text/csv'}));
+  a.download=`salary-${P().month}.csv`;document.body.appendChild(a);a.click();a.remove()};
+$('join').onchange=()=>{S.join=$('join').value;save();render()};
+let cal={y:new Date().getFullYear(),m:new Date().getMonth()};const sel=new Set(),cal0=cal.y*12+cal.m;
+const AB={'Full day':'P','Shift completed':'P','Marked present':'P','Half day':'\u00bd','Absent':'A','Marked absent':'A','Week off':'W','Holiday':'H','Leave':'L','Not joined':'\u2013'};
+function markDays(keys,v){
+  let n=0,skip=0;
+  dayRows(keys.map(k=>new Date(k+'T00:00:00'))).forEach(x=>{
+    if(x.st==='Not joined'||(WORK.includes(x.st)&&v!=='holiday'&&v!=='')){skip++;return}
+    if(v)S.marks[x.k]=v;else delete S.marks[x.k];n++});
+  save();
+  return `${v?'Marked':'Cleared'} ${n} day${n===1?'':'s'}${skip?`, skipped ${skip} with recorded check-ins or before joining`:''}.`;
+}
+function renderCal(){
+  const{y,m}=cal,dim=new Date(y,m+1,0).getDate(),lead=new Date(y,m,1).getDay(),today=dayKey(Date.now());
+  const rows=dayRows(Array.from({length:dim},(_,i)=>new Date(y,m,i+1)));
+  $('cmon').textContent=new Date(y,m,1).toLocaleDateString([], {month:'long',year:'numeric'});
+  $('cprev').disabled=y*12+m<=cal0-3;$('cnext').disabled=y*12+m>=cal0+3;
+  $('cal').innerHTML=['Su','Mo','Tu','We','Th','Fr','Sa'].map(d=>`<div class="wd">${d}</div>`).join('')+'<div></div>'.repeat(lead)+rows.map(x=>{
+    const ab=x.hol?'P+H':(AB[x.st]||''),on=sel.has(x.k);
+    return `<button class="cd${x.k===today?' today':''}${x.k>today?' fut':''}" data-k="${x.k}" aria-pressed="${on}" aria-label="${dy(x.d)}, ${x.st}" style="--s:${sc(x.st)}"><b>${x.d.getDate()}</b><small>${ab}</small></button>`}).join('');
+  const c=s=>rows.filter(x=>x.st===s).length,full=c('Full day')+c('Shift completed')+c('Marked present'),half=c('Half day');
+  $('cSum').innerHTML=`<div class="chips"><span class="chip" style="--c:#0f8a6d"><i></i>Present (P)<b>${full}</b></span><span class="chip" style="--c:#d99a06"><i></i>Half day (\u00bd)<b>${half}</b></span><span class="chip" style="--c:#dc2626"><i></i>Absent (A)<b>${c('Absent')+c('Marked absent')}</b></span><span class="chip" style="--c:#3b6fd4"><i></i>Week off (W)<b>${c('Week off')}</b></span><span class="chip" style="--c:#7c3aed"><i></i>Holiday (H)<b>${c('Holiday')}</b></span><span class="chip" style="--c:#ea580c"><i></i>Leave (L)<b>${c('Leave')}</b></span></div>`;
+  const n=sel.size;
+  $('csub').textContent=n?`${n} day${n===1?'':'s'} selected. Choose a mark and tap Apply.`:'Tap days on the calendar to select them.';
+  if(n===1){
+    const k=[...sel][0],x=dayRows([new Date(k+'T00:00:00')])[0];
+    $('cdet').innerHTML=`<b>${dy(x.d)}</b>: ${x.st}${x.a!==undefined?`<br>In ${tm(x.a)}, Out ${x.live?'still checked in':tm(x.b)}, ${hm(x.ms)}`:''}${x.ot?`, Overtime ${hm(x.ot)}`:''}`;
+  }else $('cdet').textContent=n?'':'Tap a day to see its details.';
+}
+$('cal').onclick=e=>{const b=e.target.closest('.cd');if(!b)return;const k=b.dataset.k;sel.has(k)?sel.delete(k):sel.add(k);renderCal()};
+$('cprev').onclick=()=>{if(--cal.m<0){cal.m=11;cal.y--}renderCal()};
+$('cnext').onclick=()=>{if(++cal.m>11){cal.m=0;cal.y++}renderCal()};
+$('call').onclick=()=>{const dim=new Date(cal.y,cal.m+1,0).getDate();for(let i=1;i<=dim;i++)sel.add(dayKey(new Date(cal.y,cal.m,i).getTime()));renderCal()};
+$('cnone').onclick=()=>{sel.clear();renderCal()};
+$('cgo').onclick=()=>{if(!sel.size){say('Tap days on the calendar first.',true);return}
+  const t=markDays([...sel],$('cs').value);sel.clear();render();say(t)};
+$('bgo').onclick=()=>{const f=$('bf').value,t=$('bt').value,v=$('bs').value;if(!f||!t||f>t){say('Pick a start date and an end date.',true);return}
+  const ks=[];for(let d=new Date(f+'T00:00:00');dayKey(d.getTime())<=t&&ks.length<366;d.setDate(d.getDate()+1))ks.push(dayKey(d.getTime()));
+  const r=markDays(ks,v);render();say(r)};
+
+const esc=v=>String(v||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const _a=['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'],_b=['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+const _two=n=>n<20?_a[n]:_b[Math.floor(n/10)]+(n%10?' '+_a[n%10]:'');
+const _three=n=>n>99?_a[Math.floor(n/100)]+' Hundred'+(n%100?' '+_two(n%100):''):_two(n);
+function inWords(n){n=Math.round(n);if(n<0)return 'Minus '+inWords(-n);if(n===0)return 'Zero';
+  const cr=Math.floor(n/1e7),l=Math.floor(n%1e7/1e5),t=Math.floor(n%1e5/1e3),r=n%1000,p=[];
+  if(cr)p.push(inWords(cr)+' Crore');if(l)p.push(_two(l)+' Lakh');if(t)p.push(_two(t)+' Thousand');if(r)p.push(_three(r));return p.join(' ')}
+function fillSlip(){const p=P();$('sf_month').innerHTML=cycOpts().map(([v,n])=>`<option value="${v}"${v===p.month?' selected':''}>${n}</option>`).join('')}
+const EMP={name:'Madas Naveen',eid:'10044289',desg:'Assistant Manager S2'};
+function renderSlip(){
+  const q=Object.assign({},EMP,S.slip),p=P(),L=calcPay(),[y,m]=p.month.split('-').map(Number),st=new Date(y,m-1,21),en=new Date(y,m,20);
+  const ord=d=>{const n=d.getDate(),t=n%10,h=n%100;return n+(t===1&&h!==11?'st':t===2&&h!==12?'nd':t===3&&h!==13?'rd':'th')},mn=d=>d.toLocaleDateString('en-US',{month:'long'});
+  const dur=`${ord(st)} ${mn(st)}, ${st.getFullYear()} to ${ord(en)} ${mn(en)}, ${en.getFullYear()}`;
+  const num=v=>Number(String(v).replace(/[^\d-]/g,'')),amt=v=>String(v).replace('\u20b9','');
+  const sec={};let cur='';L.forEach(r=>{if(r.length===1){cur=r[0];sec[cur]=[]}else sec[cur].push(r)});
+  const keep=a=>{const f=a.filter(r=>num(r[1])!==0);return f.length?f:a.slice(0,1)};
+  const E=sec['Earnings']||[],D=sec['Deductions']||[];
+  const earn=keep(E.filter(r=>!['Monthly salary (full)','Gross pay'].includes(r[0]))),gross=E.find(r=>r[0]==='Gross pay'),
+    ded=keep(D.filter(r=>!['Total deductions','Net pay'].includes(r[0]))),tded=D.find(r=>r[0]==='Total deductions'),net=D.find(r=>r[0]==='Net pay');
+  const pd=((sec['Attendance']||[]).find(r=>r[0]==='Payable days')||[,'0 of 0'])[1].split(' of '),pay=parseFloat(pd[0])||0,base=parseFloat(pd[1])||0;
+  const n=Math.max(earn.length,ded.length),cell=(r,i)=>r[i]?`<td>${r[i][0]}</td><td class="r">${amt(r[i][1])}</td>`:'<td></td><td></td>';
+  const rows=Array.from({length:n},(_,i)=>`<tr>${cell(earn,i)}${cell(ded,i)}</tr>`).join('');
+  const jd=S.join?new Date(S.join+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}).replace(/ /g,'-'):'N.A';
+  const netNum=net?num(net[1]):0,netS=net?amt(net[1]):'';
+  const pr=(a,b,c,d)=>`<tr><td class="l">${a}</td><td class="v">: ${b}</td><td class="l">${c}</td><td class="v">${d===''?'':': '+d}</td></tr>`;
+  $('slip').innerHTML=`<div class="band">${q.logo?`<img src="${q.logo}" alt="Company logo">`:''}<b>${esc(S.wp&&S.wp.name)||'Company'}</b><div class="ttl">Salary Slip for the Month of ${mn(en)} - ${en.getFullYear()}</div></div>
+<table class="emp">${pr('Employee Name',esc(q.name).toUpperCase(),'Employee ID',esc(q.eid))}${pr('Designation',esc(q.desg),'Date of Joining',jd)}${pr('Duration',dur,'Current Office location',esc(S.wp&&S.wp.name)||'N.A')}${pr('No of Working Days',base,'No of Days Worked',pay)}${pr('LOP Days',Math.max(0,base-pay),'','')}</table>
+<table class="st"><thead><tr class="h1"><th colspan="2">Earnings</th><th colspan="2">Deductions</th></tr><tr><th>Description</th><th>Amount</th><th>Description</th><th>Amount</th></tr></thead><tbody>${rows}
+<tr class="b"><td>Gross Earnings</td><td class="r">${gross?amt(gross[1]):''}</td><td>Gross Deductions</td><td class="r">${tded?amt(tded[1]):''}</td></tr>
+<tr class="b"><td>Net Pay</td><td class="r">${netS}</td><td></td><td></td></tr><tr class="b"><td>Total Pay</td><td class="r">${netS}</td><td></td><td></td></tr></tbody></table>
+<p class="wd2"><b>In words :</b> ${inWords(netNum)} Rupees Only.</p>
+<p class="ft">** This is a system generated payslip, hence signature not required.</p>`;
+}
+$('sf_month').onchange=e=>{S.pay=Object.assign({},S.pay,{v2:1,month:e.target.value});save();renderSlip()};
+$('slogoBtn').onclick=()=>$('slogo').click();
+$('slogoDel').onclick=()=>{S.slip=Object.assign({},S.slip,{logo:''});save();renderSlip();say('Logo removed.')};
+$('slogo').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{const im=new Image();
+    im.onload=()=>{const k=Math.min(1,400/im.width,160/im.height),c=document.createElement('canvas');c.width=Math.max(1,Math.round(im.width*k));c.height=Math.max(1,Math.round(im.height*k));c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+      S.slip=Object.assign({},S.slip,{logo:c.toDataURL('image/png')});save();renderSlip();say('Logo added.')};
+    im.onerror=()=>say('Could not read that image.',true);im.src=r.result};
+  r.onerror=()=>say('Could not read that file.',true);r.readAsDataURL(f);e.target.value=''};
+$('slipBtn').onclick=()=>show('slip');
+$('slipBack').onclick=()=>show('pay');
+$('slipPrint').onclick=()=>{const t=document.title;document.title='Payslip-'+P().month;window.onafterprint=()=>{document.title=t;window.onafterprint=null};window.print()};
+
+/* ---- saved places, trips, maps ---- */
+const SAME=100,near=(la,lo,r)=>{let b=null,m=1e12;S.locs.forEach(l=>{const d=dist(la,lo,l.lat,l.lng);if(d<=r&&d<m){b=l;m=d}});return b};
+function askName(t,m,def){return new Promise(res=>{
+  const d=$('dlg'),i=$('dlgIn'),e=$('dlgE');
+  $('dlgT').textContent=t;$('dlgP').textContent=m;i.value=def||'';e.textContent='';d.hidden=false;setTimeout(()=>i.focus(),50);
+  const done=v=>{d.hidden=true;res(v)};
+  const ok=()=>{const n=i.value.trim();
+    if(!n){e.textContent='A name is required to save a location.';return}
+    if(S.locs.some(l=>l.name.toLowerCase()===n.toLowerCase())){e.textContent='This name is already used. Choose a different name.';return}
+    done(n)};
+  $('dlgOk').onclick=ok;$('dlgNo').onclick=()=>done(null);i.onkeydown=ev=>{if(ev.key==='Enter')ok()};
+})}
+async function pickHere(role){
+  say('Getting your location…');
+  let p;try{p=await getPos()}catch(e){say(e.message,true);return}
+  const la=p.coords.latitude,lo=p.coords.longitude;let l=near(la,lo,SAME);
+  if(!l){
+    const n=await askName('Warning: new location found','This place is not in your saved locations. Enter a name to save it.',role==='wp'?$('wpName').value.trim():'');
+    if(!n){say('Location not saved.',true);return}
+    l={name:n,lat:la,lng:lo};S.locs.push(l);save();
+  }
+  if(role)useAs(role,l);else{render();say(`Saved as ${l.name}.`)}
+}
+function useAs(role,l){
+  const o=role==='wp'?S.home:S.wp;
+  if(o&&o.name===l.name){say('Home and workplace must be different places.',true);return}
+  const c={name:l.name,lat:l.lat,lng:l.lng};
+  if(role==='wp'){
+    S.wp=c;
+    S.radius=+$('rad').value||150;
+  }else{
+    S.home=c;
+    if(!S.trk){
+      S.trk=true;
+      S.here=l.name;
+      S.hereLL={la:l.lat,lo:l.lng};
+      startAuto(1);
+    }else{
+      S.here=l.name;
+      S.hereLL={la:l.lat,lo:l.lng};
+    }
+  }
+  save();render();say(`${role==='wp'?'Workplace':'Home'} set to ${l.name}.`+(role==='home'?' Trip logging is on.':''));
+}
+/* trips */
+function endTrip(to,la,lo,now){
+  const t=S.trip;if(!t)return;S.trip=null;
+  if(t.from===to)return;
+  if(now-t.t>12*H){say('Trip discarded: tracking was interrupted for too long.',true);return}
+  S.trips.unshift({n:++S.tripN,from:t.from,to,fLat:t.fLat,fLng:t.fLng,tLat:la,tLng:lo,t0:t.t,t1:now});
+  say(`Travelling Check-In stopped: ${t.from} to ${to}, ${hm(now-t.t)}.`);
+}
+function startTravelFrom(name,la,lo,now){
+  if(!S.trk)return;
+  if(S.trip)return;
+  S.trip={from:name,fLat:la,fLng:lo,t:now};
+  S.here=null;
+  save();renderTrip();renderLib();
+}
+function arriveAt(name,la,lo,now){if(!S.trk)return;endTrip(name,la,lo,now);S.here=name;S.hereLL={la,lo};save();renderTrip()}
+function tripPos(la,lo,now){
+  if(!S.trk||!S.locs.length)return;
+  let ch=false;
+
+  /*
+   * Home departure rule:
+   * Do NOT start the morning Travelling Check-In while still at/near Home.
+   * It starts only after crossing 500 m from the saved Home location.
+   */
+  if(!S.trip && S.here){
+    const here=S.locs.find(l=>l.name===S.here);
+    if(!here){
+      S.here=null;ch=true;
+    }else{
+      const threshold=(S.home&&here.name===S.home.name)
+        ?(Number(S.homeDeparture)||500)
+        :(Number(S.radius)||150)+30;
+      if(dist(la,lo,here.lat,here.lng)>threshold){
+        startTravelFrom(here.name,here.lat,here.lng,now);
+        if(S.trip)S.trip.left=true;
+        S.here=null;ch=true;
+        say(`Travelling Check-In started after leaving ${here.name} by ${Math.round(threshold)} m.`);
+      }
+    }
+  }
+
+  /*
+   * Destination arrival rule:
+   * Use the destination's own arrival radius. Home uses 500 m only for
+   * departure; Workplace uses the configured workplace radius for arrival.
+   */
+  if(S.trip&&!S.trip.left){const f=S.locs.find(l=>l.name===S.trip.from);
+    if(!f)S.trip.left=true;
+    else if(dist(la,lo,f.lat,f.lng)>((S.home&&f.name===S.home.name)?(Number(S.homeDeparture)||500):(Number(S.radius)||150)+30)){S.trip.left=true;ch=true}}
+  const destinations=[];
+  if(S.home)destinations.push({place:S.home,radius:500});
+  if(S.wp)destinations.push({place:S.wp,radius:Number(S.radius)||150});
+
+  let at=null;
+  for(const d of destinations){
+    if(dist(la,lo,d.place.lat,d.place.lng)<=d.radius){
+      at=d.place;
+      break;
+    }
+  }
+
+  if(at){
+    if(S.trip&&!S.trip.left&&at.name===S.trip.from){if(ch){save();renderTrip()}return}
+    if(S.trip){
+      endTrip(at.name,la,lo,now);
+      ch=true;
+    }
+    if(S.here!==at.name){
+      S.here=at.name;ch=true;
+    }
+    S.hereLL={la,lo};
+
+    /*
+     * Morning sequence:
+     * Home -> 500 m departure -> travelling -> Workplace arrival ->
+     * stop travelling -> start regular Work Check-In.
+     */
+    if(S.auto && S.wp && at.name===S.wp.name && !S.open){
+      S.open={t:now,lat:la,lng:lo};
+      save();render();
+      say(`Travelling Check-In stopped. Auto checked in at ${tm(now)}.`);
+      return;
+    }
+  }
+
+  if(ch){save();renderTrip();renderLib()}
+}
+function tripTick(){$('tripE').textContent=S.trip?hms(Date.now()-S.trip.t):''}
+function renderTrip(){
+  $('homeText').textContent=S.home?`Home: ${S.home.name} (${f5(S.home.lat)}, ${f5(S.home.lng)})`:'Home is not set. Stand at home and tap below.';
+  $('trk').checked=!!S.trk;const c=$('tripCard');
+  if(!S.trk&&!S.trip){c.hidden=true;return}
+  c.hidden=false;c.className='card'+(S.trip?' on':'');
+  $('tripT').textContent=S.trip?`Travelling Check-In: ${S.trip.from} → travelling`:S.here?`At ${S.here}`:'Trip logging is on';
+  $('tripS').textContent=S.trip
+    ? `Started ${tm(S.trip.t)}. Duration counts only after leaving the saved place and stops when the next saved place is reached.`
+    : (S.home&&S.wp
+      ? `Home ↔ ${S.wp.name}: leave the saved place to start timing; reaching the destination stops timing${S.auto?' and auto check-in starts at the workplace.':'.'}`
+      : 'A trip starts when you leave a saved place and closes when you reach another one.');
+  $('tripX').hidden=!S.trip;tripTick();
+}
+const dt=t=>{const d=new Date(t);return `${pad(d.getDate())} ${MN[d.getMonth()]} ${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`};
+const ll=(a,b)=>`${f5(a)} / ${f5(b)}`;
+const dh=ms=>{const s=Math.floor(ms/1000);return `${pad(Math.floor(s/3600))}:${pad(Math.floor(s%3600/60))}:${pad(s%60)}`};
+function renderLib(){
+  $('ttab').innerHTML='<thead><tr><th>S no</th><th>Location name</th><th>Destination name</th><th>Start lat / long</th><th>Stop lat / long</th><th>Start time</th><th>Reached time</th><th>Duration</th></tr></thead><tbody>'+(S.trips.length?S.trips.map(t=>`<tr><td>${t.n}</td><td>${esc(t.from)}</td><td>${esc(t.to)}</td><td>${ll(t.fLat,t.fLng)}</td><td>${ll(t.tLat,t.tLng)}</td><td>${dt(t.t0)}</td><td>${dt(t.t1)}</td><td>${dh(t.t1-t.t0)}</td></tr>`).join(''):'<tr><td colspan="8">No trips yet.</td></tr>')+'</tbody>';
+  $('places').innerHTML=S.locs.length?S.locs.map((l,i)=>`<div class="log"><b>${esc(l.name)}</b><span class="dur">${S.home&&S.home.name===l.name?'Home':S.wp&&S.wp.name===l.name?'Workplace':''}</span><span>${ll(l.lat,l.lng)}</span><div class="mk"><button data-a="home" data-i="${i}">Home</button><button data-a="wp" data-i="${i}">Workplace</button><button data-a="del" data-i="${i}">Delete</button></div></div>`).join(''):'<p class="empty">No saved places yet.</p>';
+}
+$('places').onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const i=+b.dataset.i,l=S.locs[i],a=b.dataset.a;
+  if(a==='del'){if(!confirm(`Delete "${l.name}"?`))return;if(S.home&&S.home.name===l.name)S.home=null;if(S.wp&&S.wp.name===l.name)S.wp=null;if(S.here===l.name)S.here=null;S.locs.splice(i,1);save();render()}
+  else useAs(a==='home'?'home':'wp',l)};
+$('saveHere').onclick=()=>pickHere(null);
+$('saveHomeHere').onclick=()=>pickHere(null);
+$('setHome').onclick=()=>pickHere('home');
+$('trk').onchange=()=>{
+  S.trk=$('trk').checked;
+  if(S.trk){
+    if(!S.home||!S.wp){
+      S.trk=false;$('trk').checked=false;
+      say('Set both Home and Workplace first.',true);
+    }else{
+      S.here=S.home.name;
+      S.hereLL={la:S.home.lat,lo:S.home.lng};
+      startAuto(1);
+    }
+  }else{
+    S.here=null;S.trip=null;
+    if(!S.auto&&!S.open)stopAuto(1);
+  }
+  save();render()
+};
+$('tripX').onclick=()=>{S.trip=null;save();renderTrip()};
+$('tclr').onclick=()=>{if(confirm('Delete the whole trip log?')){S.trips=[];save();render()}};
+$('tcsv').onclick=()=>{const q=v=>`"${String(v).replace(/"/g,'""')}"`;
+  const rows=['S no,Location name,Destination name,Start lat / long,Stop lat / long,Start time,Reached time,Duration'].concat(S.trips.map(t=>[t.n,q(t.from),q(t.to),q(ll(t.fLat,t.fLng)),q(ll(t.tLat,t.tLng)),q(dt(t.t0)),q(dt(t.t1)),dh(t.t1-t.t0)].join(',')));
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+rows.join('\n')],{type:'text/csv'}));a.download='trip-log.csv';document.body.appendChild(a);a.click();a.remove()};
+/* maps */
+const M={map:null,g:null,to:null,route:null,res:[],first:true};
+const fmin=s=>{const m=Math.max(1,Math.round(s/60));return m<60?m+' min':Math.floor(m/60)+' h '+pad(m%60)+' min'};
+function fillFrom(){
+  const cur=$('mfrom').value;
+  $('mfrom').innerHTML='<option value="">My current location</option>'+S.locs.map((l,i)=>`<option value="${i}">${esc(l.name)}</option>`).join('');
+  const h=S.home?S.locs.findIndex(l=>l.name===S.home.name):-1;
+  $('mfrom').value=cur!==''&&S.locs[+cur]?cur:(h>=0?String(h):'');
+}
+function drawMap(fit){
+  if(!M.map)return;M.g.clearLayers();
+  const pt=(l,c,r)=>L.circleMarker([l.lat,l.lng],{radius:r,color:c,fillColor:c,fillOpacity:.85,weight:2}).bindTooltip(esc(l.name)).addTo(M.g);
+  S.locs.forEach(l=>pt(l,S.home&&S.home.name===l.name?'#0f8a6d':S.wp&&S.wp.name===l.name?'#ea580c':'#6a7686',6));
+  if(M.route){const g=L.geoJSON(M.route.geometry,{style:{color:'#3b6fd4',weight:5}}).addTo(M.g);if(fit)M.map.fitBounds(g.getBounds(),{padding:[24,24]})}
+  if(M.to)pt(M.to,'#dc2626',9);
+}
+function openMaps(){
+  fillFrom();
+  if(!M.map&&window.L){
+    M.map=L.map('map').setView([20.6,78.9],5);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, OpenStreetMap contributors'}).addTo(M.map);
+    M.g=L.layerGroup().addTo(M.map);
+    M.map.on('click',e=>{M.to={name:'Dropped pin',lat:e.latlng.lat,lng:e.latlng.lng};go()});
+  }
+  $('mapmsg').hidden=!!M.map;
+  if(M.map)setTimeout(()=>{M.map.invalidateSize();drawMap(false)},60);
+  if(M.first&&S.home&&S.wp){M.first=false;homeOffice()}
+}
+function homeOffice(){
+  if(!S.home||!S.wp){say('Set Home and Workplace in Settings first.',true);return}
+  $('mfrom').value=String(S.locs.findIndex(l=>l.name===S.home.name));M.to=S.wp;go();
+}
+async function go(){
+  if(!M.to){say('Search for a destination first.',true);return}
+  const v=$('mfrom').value;let f;
+  if(v!=='')f=S.locs[+v];else{try{const p=await getPos();f={name:'My location',lat:p.coords.latitude,lng:p.coords.longitude}}catch(e){say(e.message,true);return}}
+  const t=M.to,mode=$('mmode').value;
+  $('mout').innerHTML='<p class="sub">Finding route…</p>';
+  let r=null,est=false;
+  try{const c=new AbortController(),k=setTimeout(()=>c.abort(),12000);
+    const j=await(await fetch(`https://routing.openstreetmap.de/routed-${mode}/route/v1/driving/${f.lng},${f.lat};${t.lng},${t.lat}?overview=full&geometries=geojson`,{signal:c.signal})).json();clearTimeout(k);
+    if(j.code==='Ok'&&j.routes&&j.routes[0])r=j.routes[0]}catch(e){}
+  if(!r){est=true;const d=dist(f.lat,f.lng,t.lat,t.lng)*1.3;r={distance:d,duration:d/({car:35,bike:15,foot:5}[mode]/3.6),geometry:{type:'LineString',coordinates:[[f.lng,f.lat],[t.lng,t.lat]]}}}
+  M.route=r;
+  $('mout').innerHTML=`<div class="kv h"><b>${esc(f.name)} to ${esc(t.name)}</b></div><div class="kv tot"><span>Travel time</span><b>${fmin(r.duration)}</b></div><div class="kv"><span>Distance</span><b>${(r.distance/1000).toFixed(1)} km</b></div><p class="sub">${est?'Estimate only: the route service could not be reached, so this is a straight-line guess.':'Typical time without live traffic.'}</p>`;
+  drawMap(true);
+}
+async function msearch(){
+  const q=$('mq').value.trim();if(!q){say('Type a place to search.',true);return}
+  $('mres').innerHTML='<p class="sub">Searching…</p>';
+  try{
+    const j=await(await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&q='+encodeURIComponent(q))).json();
+    M.res=j.map(x=>({name:x.display_name.split(',').slice(0,2).join(',').trim(),full:x.display_name,lat:+x.lat,lng:+x.lon}));
+    $('mres').innerHTML=M.res.length?M.res.map((x,i)=>`<button class="ghost res" data-i="${i}">${esc(x.full)}</button>`).join(''):'<p class="sub">No places found. Try a more specific name.</p>';
+  }catch(e){$('mres').innerHTML='<p class="sub">Search failed. Check your internet connection.</p>'}
+}
+$('ms').onclick=msearch;$('mq').onkeydown=e=>{if(e.key==='Enter')msearch()};
+$('mres').onclick=e=>{const b=e.target.closest('[data-i]');if(!b)return;M.to=M.res[+b.dataset.i];$('mres').innerHTML='';go()};
+$('mmode').onchange=()=>M.to&&go();$('mfrom').onchange=()=>M.to&&go();$('mho').onclick=homeOffice;
+$('msp').onclick=async()=>{
+  if(!M.to){say('Search for a destination first.',true);return}
+  const k=near(M.to.lat,M.to.lng,SAME);if(k){say(`Already saved as ${k.name}.`);return}
+  const n=await askName('Warning: new location found','This destination is not saved yet. Enter a name to save it.',M.to.name==='Dropped pin'?'':M.to.name.split(',')[0]);
+  if(!n)return;S.locs.push({name:n,lat:M.to.lat,lng:M.to.lng});save();render();say(`Saved as ${n}.`)};
+
+buildPay();
+prune();render();setInterval(tick,1000);
+</script>
+<script>
+(()=>{const $=i=>document.getElementById(i);
+let ctx=null,beepT=null,vibT=null,ov=null;
+const hrs=()=>Math.max(1,+(S.almH||9));
+const unlockAudio=()=>{try{ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();if(ctx.state==='suspended')ctx.resume()}catch(e){}};
+['pointerdown','touchstart','keydown'].forEach(e=>document.addEventListener(e,unlockAudio,{passive:true}));
+const vol=()=>Math.min(1,Math.max(.2,+(S.almVol||1)));
+let au=null;
+const tone=(type,f0,f1,t0,dur,g)=>{const t=ctx.currentTime+t0,o=ctx.createOscillator(),n=ctx.createGain();o.type=type;o.frequency.setValueAtTime(f0,t);if(f1!==f0)o.frequency.linearRampToValueAtTime(f1,t+dur);n.gain.setValueAtTime(.0001,t);n.gain.exponentialRampToValueAtTime(Math.max(.001,g*vol()),t+.02);n.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(n);n.connect(ctx.destination);o.start(t);o.stop(t+dur+.02)};
+const SND={classic:[1200,()=>{tone('square',880,880,0,.18,.5);tone('square',1100,1100,.22,.18,.5);tone('square',880,880,.44,.18,.5)}],
+digital:[1000,()=>{for(let k=0;k<4;k++)tone('square',1600,1600,k*.15,.09,.45)}],
+bell:[2200,()=>{[[660,.7],[990,.4],[1320,.25]].forEach(([f,g])=>tone('sine',f,f,0,1.8,g))}],
+siren:[1600,()=>{tone('sawtooth',600,1000,0,.7,.45);tone('sawtooth',1000,600,.75,.7,.45)}]};
+const sndKey=()=>{const k=S.almSnd||'classic';return k==='custom'&&!getCustom()?'classic':k};
+const getCustom=()=>{try{return localStorage.getItem('punch_snd')||''}catch(e){return ''}};
+const beep=()=>{if(sndKey()==='custom')return;if(!ctx)return;try{SND[sndKey()][1]()}catch(e){}};
+function stopAlarm(){try{au&&au.pause();au=null}catch(e){}clearInterval(beepT);clearInterval(vibT);beepT=vibT=null;try{navigator.vibrate&&navigator.vibrate(0)}catch(e){}if(ov){ov.remove();ov=null}}
+function startAlarm(txt){
+  if(ov)return;unlockAudio();
+  ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.innerHTML='<div style="background:var(--card);color:var(--ink);border-radius:20px;padding:26px;max-width:340px;width:100%;text-align:center;font-family:inherit"><div style="font-size:48px">⏰</div><h2 style="margin:8px 0">'+txt+'</h2><p style="color:var(--mute);margin:0 0 18px">Your shift is complete. You can check out now.</p><button id="almStop" style="width:100%;padding:14px;border:0;border-radius:12px;background:var(--in);color:#fff;font:inherit;font-weight:700">Stop alarm</button><button id="almSnz" style="width:100%;padding:12px;margin-top:8px;border:1px solid var(--line);border-radius:12px;background:none;color:var(--ink);font:inherit">Snooze 5 min</button></div>';
+  document.body.appendChild(ov);
+  $('almStop').onclick=stopAlarm;
+  $('almSnz').onclick=()=>{stopAlarm();if(S.open){S.open.snooze=Date.now()+300000;S.open.alarmed=false;save()}};
+  if(sndKey()==='custom'){try{au=new Audio(getCustom());au.loop=true;au.volume=vol();au.play().catch(()=>{})}catch(e){}}else{beep();beepT=setInterval(beep,SND[sndKey()][0])}
+  try{navigator.vibrate&&(navigator.vibrate([500,200,500]),vibT=setInterval(()=>navigator.vibrate([500,200,500]),1500))}catch(e){}
+  try{if('Notification' in window&&Notification.permission==='granted')new Notification('Punch alarm',{body:txt+' – you can check out now.',requireInteraction:true,tag:'punch-alarm'})}catch(e){}
+}
+function alarmCheck(){
+  if(!S.open){if(ov)stopAlarm();return}
+  if(S.alm===false||S.open.alarmed)return;
+  const due=Math.max(S.open.t+hrs()*36e5,S.open.snooze||0);
+  if(Date.now()<due)return;
+  S.open.alarmed=true;save();
+  startAlarm(hrs()+' hours completed');
+}
+setInterval(alarmCheck,1000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)alarmCheck()});
+window.addEventListener('focus',alarmCheck);
+/* settings */
+$('alm').checked=S.alm!==false;$('almh').value=S.almH||9;
+$('alm').onchange=e=>{S.alm=e.target.checked;save();if(S.alm){unlockAudio();try{'Notification' in window&&Notification.permission==='default'&&Notification.requestPermission()}catch(x){}}};
+$('almh').onchange=e=>{const v=Math.min(24,Math.max(1,+e.target.value||9));e.target.value=v;S.almH=v;if(S.open){S.open.alarmed=false;S.open.snooze=0}save()};
+const sel=$('almSnd'),vr=$('almVol');
+if(getCustom())sel.querySelector('[value=custom]').hidden=false;
+sel.value=sndKey();vr.value=vol();
+sel.onchange=()=>{S.almSnd=sel.value;save();unlockAudio();if(sel.value!=='custom'){beep()}else{try{const a=new Audio(getCustom());a.volume=vol();a.play();setTimeout(()=>a.pause(),2500)}catch(e){}}};
+vr.onchange=()=>{S.almVol=+vr.value;save();unlockAudio();beep()};
+$('almFile').onchange=e=>{const f=e.target.files[0];if(!f)return;if(f.size>1500000){say('Sound file is too big. Choose one under 1.5 MB.',true);e.target.value='';return}
+const r=new FileReader();r.onload=()=>{try{localStorage.setItem('punch_snd',r.result);sel.querySelector('[value=custom]').hidden=false;sel.value='custom';S.almSnd='custom';save();say('Your sound is saved as the alarm.')}catch(x){say('Could not save this sound. Try a smaller file.',true)}};r.readAsDataURL(f)};
+$('almTest').onclick=()=>{unlockAudio();try{'Notification' in window&&Notification.permission==='default'&&Notification.requestPermission()}catch(x){}startAlarm('Test alarm')};
+/* new check-in: unlock sound + ask notification permission once */
+$('punch').addEventListener('click',()=>{unlockAudio();try{'Notification' in window&&Notification.permission==='default'&&Notification.requestPermission()}catch(x){}});
+})();
+</script>
+<script>
+(()=>{const $=i=>document.getElementById(i),B=document.body,MAIL='mnavi5531@gmail.com',ID='10044289';
+/* ===== EMAIL SETUP (EmailJS) — paste your 3 values here ===== */
+const EJ={service:'Naveen@1243',template:'template_ts1f3mq',key:'GYdp2calx6qNHSZq0'};
+let code='',exp=0;
+const DEF='Onepiece@1243';
+const ck=(k)=>{const m=document.cookie.match(new RegExp('(?:^|; )'+k+'=([^;]*)'));return m?decodeURIComponent(m[1]):''};
+const setck=(k,v)=>{try{document.cookie=k+'='+encodeURIComponent(v)+';max-age=315360000;path=/;SameSite=Lax'}catch(e){}};
+const get=()=>{let v='';try{v=localStorage.getItem('att_pw')||''}catch(e){}if(!v)v=ck('att_pw');return v||DEF};
+const set=v=>{try{localStorage.setItem('att_pw',v)}catch(e){}setck('att_pw',v)};
+try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+const isIn=()=>{let t=0;try{t=+localStorage.getItem('att_in')||0}catch(e){}if(!t)t=+ck('att_in')||0;if(!t){try{t=+sessionStorage.getItem('att_in')||0}catch(e){}}return !!t};
+const setIn=()=>{const n=String(Date.now());try{localStorage.setItem('att_in',n)}catch(e){}setck('att_in',n);try{sessionStorage.setItem('att_in',n)}catch(e){}};
+const clrIn=()=>{try{localStorage.removeItem('att_in')}catch(e){}document.cookie='att_in=;max-age=0;path=/';try{sessionStorage.removeItem('att_in')}catch(e){}};
+const show=n=>{['v1','v2','v3','v4'].forEach((k,i)=>$(k).hidden=i+1!==n);document.querySelectorAll('.er').forEach(e=>{e.textContent='';e.className='er'});
+$('lgs').textContent=['Sign in to continue','Forgot password','Enter the code sent to your mail','Set a new password'][n-1]};
+const err=(id,t,ok)=>{$(id).textContent=t;$(id).className='er'+(ok?' ok':'')};
+const unlock=()=>{B.classList.remove('locked');setIn();setTimeout(()=>window.dispatchEvent(new Event('resize')),50)};
+if(!isIn())B.classList.add('locked');
+B.insertAdjacentHTML('afterbegin',`<div id="lg"><div class="box">
+<h1>Attendance Management</h1><p class="s" id="lgs">Sign in to continue</p>
+<div id="v1"><label>Login Name</label><input id="u" autocomplete="username" inputmode="numeric" autocapitalize="off" autocorrect="off" spellcheck="false">
+<label>Password</label><div class="pwrow"><input id="p" type="password" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false"><button type="button" class="pwview" id="vp" aria-label="Show password">Show</button></div>
+<div class="er" id="e1"></div><button class="b" id="li">Login</button><button class="lk" id="fg">Forgot password?</button></div>
+<div id="v2" hidden><label>Registered Mail ID</label><input id="em" type="email" placeholder="you@gmail.com">
+<div class="er" id="e2"></div><button class="b" id="sc">Send reset code</button><button class="lk" data-b>Back to login</button></div>
+<div id="v3" hidden><div class="mail" id="ml"></div><label>Reset code</label><input id="cd" inputmode="numeric" maxlength="6">
+<div class="er" id="e3"></div><button class="b" id="vc">Verify code</button><button class="lk" data-b>Back to login</button></div>
+<div id="v4" hidden><label>New password</label><div class="pwrow"><input id="n1" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false"><button type="button" class="pwview" id="vn1" aria-label="Show new password">Show</button></div>
+<label>Confirm new password</label><div class="pwrow"><input id="n2" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false"><button type="button" class="pwview" id="vn2" aria-label="Show confirm password">Show</button></div>
+<div class="er" id="e4"></div><button class="b" id="rp">Reset password</button></div>
+</div></div>
+`);
+document.head.insertAdjacentHTML('beforeend','<style>'+`
+body.locked>header,body.locked>main{display:none}
+#lg{position:fixed;inset:0;z-index:9999;background:var(--bg);display:none;align-items:center;justify-content:center;padding:16px;overflow:auto}
+body.locked #lg{display:flex}
+#lg .box{width:100%;max-width:400px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:24px}
+#lg h1{font-size:26px;color:var(--ink);margin:0 0 4px;text-align:center}
+#lg p.s{color:var(--mute);text-align:center;margin:0 0 18px;font-size:14px}
+#lg label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}
+#lg input{font:inherit;width:100%;padding:12px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink)}
+#lg .pwrow{display:flex;gap:8px;align-items:center}
+#lg .pwrow input{flex:1;min-width:0}
+#lg .pwview{width:auto;margin:0;padding:10px 12px;background:var(--bg);color:var(--in);border:1px solid var(--line);font-size:13px}
+#lg .b{background:var(--in);margin-top:16px}
+#lg .lk{background:none;color:var(--in);font-size:14px;padding:8px;margin-top:8px}
+#lg .er{color:var(--out);font-size:13px;min-height:18px;margin-top:8px}
+#lg .ok{color:var(--in)}
+#lg .mail{background:var(--bg);border:1.5px dashed var(--in);border-radius:12px;padding:12px;font-size:13px;margin-bottom:8px}
+#lg .mail b{font-size:22px;letter-spacing:4px;display:block;margin-top:4px}
+#lgout{position:absolute;right:12px;top:10px;width:auto;padding:6px 12px;font-size:13px;background:var(--out)}
+`+'</style>');
+const hd=document.querySelector('header.top');hd.style.position='relative';
+hd.insertAdjacentHTML('beforeend','<button id="lgout">Logout</button>');
+$('lgout').onclick=()=>{clrIn();$('u').value=$('p').value='';show(1);B.classList.add('locked')};
+const togglePassword=(inputId,buttonId,label)=>{$(buttonId).onclick=()=>{const visible=$(inputId).type==='text';$(inputId).type=visible?'password':'text';$(buttonId).textContent=visible?'Show':'Hide';$(buttonId).setAttribute('aria-label',visible?'Show '+label:'Hide '+label)}};
+togglePassword('p','vp','password');togglePassword('n1','vn1','new password');togglePassword('n2','vn2','confirm password');
+$('li').onclick=()=>{if($('u').value.trim()===ID&&$('p').value.trim()===get().trim())unlock();else err('e1','Wrong login name or password.')};
+['u','p'].forEach(i=>$(i).onkeydown=e=>{if(e.key==='Enter')$('li').click()});
+$('fg').onclick=()=>show(2);
+document.querySelectorAll('[data-b]').forEach(b=>b.onclick=()=>show(1));
+$('sc').onclick=async()=>{if($('em').value.trim().toLowerCase()!==MAIL)return err('e2','This mail ID is not registered.');
+code=String(Math.floor(100000+Math.random()*900000));exp=Date.now()+600000;
+if(!EJ.service||!EJ.template||!EJ.key){$('ml').innerHTML='Email service not set up yet (demo mode).<br>Code:<b>'+code+'</b>';show(3);return}
+const bt=$('sc');bt.disabled=true;err('e2','Sending code to your mail…',1);
+try{const r=await fetch('https://api.emailjs.com/api/v1.0/email/send',{method:'POST',headers:{'Content-Type':'application/json'},
+body:JSON.stringify({service_id:EJ.service,template_id:EJ.template,user_id:EJ.key,template_params:{to_email:MAIL,otp:code,app_name:'Attendance Management',valid_minutes:'10'}})});
+if(!r.ok)throw new Error(await r.text());
+$('ml').innerHTML='A 6-digit code was sent to <b style="display:inline;font-size:inherit;letter-spacing:0">'+MAIL.replace(/^(.).*(@.*)$/,'$1***$2')+'</b>. Check your inbox (and spam). Valid 10 minutes.';show(3)}
+catch(x){code='';let m=String(x&&x.message||x).slice(0,160);if(/failed to fetch|networkerror|load failed/i.test(m))m='No internet connection, or the request was blocked. Open the page over https and check your connection.';err('e2','Could not send the mail: '+m)}
+bt.disabled=false};
+$('vc').onclick=()=>{if(Date.now()>exp)return err('e3','Code expired. Please request a new one.');
+if($('cd').value.trim()!==code)return err('e3','Incorrect code.');show(4)};
+$('rp').onclick=()=>{const a=$('n1').value.trim();if(a.length<6)return err('e4','Use at least 6 characters.');
+if(a!==$('n2').value.trim())return err('e4','Passwords do not match.');set(a);code='';err('e4','Password changed. Taking you to login…',1);
+setTimeout(()=>{$('u').value=ID;$('p').value='';$('p').type='password';$('vp').textContent='Show';show(1);err('e1','Password updated. Your login name is filled in. Enter your new password.',1);$('p').focus()},1200)};
+})();
+</script>
+</body>
+</html>
